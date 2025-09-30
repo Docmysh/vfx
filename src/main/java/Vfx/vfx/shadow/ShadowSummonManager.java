@@ -11,6 +11,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
@@ -378,14 +379,15 @@ public class ShadowSummonManager {
     private static void ensureAttackAttribute(Mob mob) {
         AttributeInstance attack = mob.getAttribute(Attributes.ATTACK_DAMAGE);
         if (attack == null) {
-            try {
-                mob.getAttributes().registerAttribute(BuiltInRegistries.ATTRIBUTE.wrapAsHolder(Attributes.ATTACK_DAMAGE));
-            } catch (IllegalArgumentException ignored) {
-                return;
-            }
+            AttributeSupplier.Builder builder = AttributeSupplier.builder();
+            builder.add(BuiltInRegistries.ATTRIBUTE.wrapAsHolder(Attributes.ATTACK_DAMAGE), 2.0D);
+            mob.getAttributes().addTransientAttributeModifiers(builder.build());
             attack = mob.getAttribute(Attributes.ATTACK_DAMAGE);
         }
-        if (attack != null && attack.getBaseValue() < 2.0D) {
+        if (attack == null) {
+            return;
+        }
+        if (attack.getBaseValue() < 2.0D) {
             attack.setBaseValue(2.0D);
         }
     }
