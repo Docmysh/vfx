@@ -2,6 +2,7 @@ package Vfx.vfx.shadow;
 
 import Vfx.vfx.Vfx;
 import Vfx.vfx.item.ShadowCollectorItem;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -378,7 +379,7 @@ public class ShadowSummonManager {
         AttributeInstance attack = mob.getAttribute(Attributes.ATTACK_DAMAGE);
         if (attack == null) {
             try {
-                mob.getAttributes().registerAttribute(Attributes.ATTACK_DAMAGE);
+                mob.getAttributes().registerAttribute(BuiltInRegistries.ATTRIBUTE.wrapAsHolder(Attributes.ATTACK_DAMAGE));
             } catch (IllegalArgumentException ignored) {
                 return;
             }
