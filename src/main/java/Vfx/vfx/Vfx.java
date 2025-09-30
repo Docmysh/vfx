@@ -7,6 +7,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.world.food.FoodProperties;
 import Vfx.vfx.client.gui.ShadowSelectionScreen;
 import Vfx.vfx.item.DarknessRelicItem;
+import Vfx.vfx.item.DomainOfShadowsRelicItem;
 import Vfx.vfx.item.ShadowCollectorItem;
 import Vfx.vfx.item.UmbralLensItem;
 import Vfx.vfx.menu.ShadowSelectionMenu;
@@ -64,6 +65,7 @@ public class Vfx {
     public static final RegistryObject<Item> DARKNESS_RELIC = ITEMS.register("darkness_relic", () -> new DarknessRelicItem(new Item.Properties().stacksTo(1)));
 
     public static final RegistryObject<Item> SHADOW_COLLECTOR = ITEMS.register("shadow_collector", () -> new ShadowCollectorItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> DOMAIN_OF_SHADOWS_RELIC = ITEMS.register("domain_of_shadows_relic", () -> new DomainOfShadowsRelicItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> UMBRAL_LENS = ITEMS.register("umbral_lens", () -> new UmbralLensItem(new Item.Properties().stacksTo(1)));
 
     public static final RegistryObject<MenuType<ShadowSelectionMenu>> SHADOW_SELECTION_MENU = MENUS.register(
@@ -121,6 +123,7 @@ public class Vfx {
         if (event.getTabKey() == CreativeModeTabs.COMBAT) {
             event.accept(DARKNESS_RELIC);
             event.accept(SHADOW_COLLECTOR);
+            event.accept(DOMAIN_OF_SHADOWS_RELIC);
             event.accept(UMBRAL_LENS);
         }
     }
