@@ -44,7 +44,6 @@ import net.minecraft.world.entity.LivingEntity;
 public class ShadowCollectorItem extends Item {
     private static final String TAG_SHADOWS = "Shadows";
     private static final String TAG_BEHAVIOR = "ShadowBehavior";
-    private static final String SHADOW_TEAM = "vfx_shadow_team";
     private static final int MAX_OUTSIDE_SHADOWS = 3;
 
     public enum ShadowBehavior {
@@ -303,9 +302,9 @@ public class ShadowCollectorItem extends Item {
         Level level = mob.level();
         if (level instanceof ServerLevel serverLevel) {
             Scoreboard scoreboard = serverLevel.getScoreboard();
-            PlayerTeam team = scoreboard.getPlayerTeam(SHADOW_TEAM);
+            PlayerTeam team = scoreboard.getPlayerTeam(ShadowSummonManager.SHADOW_TEAM);
             if (team == null) {
-                team = scoreboard.addPlayerTeam(SHADOW_TEAM);
+                team = scoreboard.addPlayerTeam(ShadowSummonManager.SHADOW_TEAM);
                 team.setColor(ChatFormatting.BLACK);
                 team.setAllowFriendlyFire(false);
                 team.setSeeFriendlyInvisibles(true);

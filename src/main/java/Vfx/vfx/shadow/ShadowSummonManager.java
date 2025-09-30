@@ -20,6 +20,7 @@ import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Slime;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.scores.Team;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -38,6 +39,7 @@ import java.util.function.Predicate;
 @Mod.EventBusSubscriber(modid = Vfx.MODID)
 public class ShadowSummonManager {
     public static final String SHADOW_TAG = "vfx_shadow_entity";
+    public static final String SHADOW_TEAM = "vfx_shadow_team";
     private static final String BEHAVIOR_TAG = "vfx_shadow_behavior";
     private static final String OWNER_TAG = "vfx_shadow_owner";
     private static final String COMBAT_READY_TAG = "vfx_shadow_combat_ready";
@@ -66,7 +68,12 @@ public class ShadowSummonManager {
         if (!(entity instanceof Mob mob)) {
             return false;
         }
-        return mob.getPersistentData().getBoolean(SHADOW_TAG);
+        if (mob.getPersistentData().getBoolean(SHADOW_TAG)) {
+            return true;
+        }
+
+        Team team = mob.getTeam();
+        return team != null && SHADOW_TEAM.equals(team.getName());
     }
 
     public static int getActiveShadowCount(ServerPlayer owner) {
