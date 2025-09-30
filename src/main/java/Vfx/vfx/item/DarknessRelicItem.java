@@ -33,8 +33,7 @@ public class DarknessRelicItem extends Item {
         DarknessDomainManager manager = DarknessDomainManager.get(serverLevel);
 
         if (manager.hasActiveDomain(serverPlayer)) {
-            manager.deactivateDomain(serverPlayer);
-            serverPlayer.getCooldowns().addCooldown(this, DOMAIN_DURATION_TICKS);
+            manager.deactivateDomain(serverPlayer, true);
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
 
@@ -44,7 +43,6 @@ public class DarknessRelicItem extends Item {
 
         BlockPos center = serverPlayer.blockPosition();
         manager.activateDomain(serverPlayer, center, DOMAIN_SIZE, DOMAIN_DURATION_TICKS);
-        serverPlayer.getCooldowns().addCooldown(this, DOMAIN_DURATION_TICKS);
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 }

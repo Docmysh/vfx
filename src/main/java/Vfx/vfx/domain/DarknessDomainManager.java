@@ -8,6 +8,7 @@ import net.minecraft.server.level.TicketType;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AreaEffectCloud;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
@@ -48,17 +49,21 @@ public class DarknessDomainManager {
     }
 
     public void activateDomain(ServerPlayer owner, BlockPos center, int size, int durationTicks) {
-        deactivateDomain(owner);
+        deactivateDomain(owner, false);
 
-        DarknessDomain domain = new DarknessDomain(level, center, size, durationTicks);
+        DarknessDomain domain = new DarknessDomain(level, owner.getUUID(), center, size, durationTicks);
         domain.apply();
         activeDomains.put(owner.getUUID(), domain);
     }
 
     public boolean deactivateDomain(ServerPlayer owner) {
+        return deactivateDomain(owner, true);
+    }
+
+    public boolean deactivateDomain(ServerPlayer owner, boolean applyCooldown) {
         DarknessDomain existing = activeDomains.remove(owner.getUUID());
         if (existing != null) {
-            existing.forceExpire();
+            existing.expire(applyCooldown);
             return true;
         }
         return false;
@@ -101,14 +106,14 @@ public class DarknessDomainManager {
             Map.Entry<UUID, DarknessDomain> entry = iterator.next();
             DarknessDomain domain = entry.getValue();
             if (domain.tickAndCheckExpired()) {
-                domain.revert();
+                domain.expire(true);
                 iterator.remove();
             }
         }
     }
 
     private void revertAll() {
-        activeDomains.values().forEach(DarknessDomain::revert);
+        activeDomains.values().forEach(domain -> domain.expire(false));
         activeDomains.clear();
     }
 
@@ -161,6 +166,7 @@ public class DarknessDomainManager {
         private final ServerLevel level;
         private final Map<BlockPos, BlockState> originalBlocks = new HashMap<>();
         private long expiryGameTime;
+        private final UUID ownerId;
         private final BlockPos center;
         private final int durationTicks;
         private final int half;
@@ -173,8 +179,9 @@ public class DarknessDomainManager {
         private final AABB bounds;
         private boolean expired;
 
-        private DarknessDomain(ServerLevel level, BlockPos center, int size, int durationTicks) {
+        private DarknessDomain(ServerLevel level, UUID ownerId, BlockPos center, int size, int durationTicks) {
             this.level = level;
+            this.ownerId = ownerId;
             this.center = center;
             this.expiryGameTime = level.getGameTime() + durationTicks;
             this.durationTicks = durationTicks;
@@ -276,13 +283,26 @@ public class DarknessDomainManager {
             originalBlocks.clear();
         }
 
-        private void forceExpire() {
+        private void expire(boolean shouldApplyCooldown) {
             if (expired) {
+                if (shouldApplyCooldown) {
+                    applyCooldown();
+                }
                 return;
             }
             expired = true;
             revert();
             expiryGameTime = level.getGameTime();
+            if (shouldApplyCooldown) {
+                applyCooldown();
+            }
+        }
+
+        private void applyCooldown() {
+            Player owner = level.getPlayerByUUID(ownerId);
+            if (owner != null) {
+                owner.getCooldowns().addCooldown(Vfx.DARKNESS_RELIC.get(), durationTicks);
+            }
         }
     }
 }

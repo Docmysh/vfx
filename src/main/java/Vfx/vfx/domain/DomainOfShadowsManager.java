@@ -10,6 +10,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AreaEffectCloud;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -46,17 +47,21 @@ public class DomainOfShadowsManager {
     }
 
     public void activateDomain(ServerPlayer owner, BlockPos center, int radius, int durationTicks) {
-        deactivateDomain(owner);
+        deactivateDomain(owner, false);
 
-        ShadowDomain domain = new ShadowDomain(level, center, radius, durationTicks);
+        ShadowDomain domain = new ShadowDomain(level, owner.getUUID(), center, radius, durationTicks);
         domain.apply();
         activeDomains.put(owner.getUUID(), domain);
     }
 
     public boolean deactivateDomain(ServerPlayer owner) {
+        return deactivateDomain(owner, true);
+    }
+
+    public boolean deactivateDomain(ServerPlayer owner, boolean applyCooldown) {
         ShadowDomain existing = activeDomains.remove(owner.getUUID());
         if (existing != null) {
-            existing.forceExpire();
+            existing.expire(applyCooldown);
             return true;
         }
         return false;
@@ -89,13 +94,14 @@ public class DomainOfShadowsManager {
             Map.Entry<UUID, ShadowDomain> entry = iterator.next();
             ShadowDomain domain = entry.getValue();
             if (domain.tickAndCheckExpired()) {
+                domain.expire(true);
                 iterator.remove();
             }
         }
     }
 
     private void clear() {
-        activeDomains.values().forEach(ShadowDomain::forceExpire);
+        activeDomains.values().forEach(domain -> domain.expire(false));
         activeDomains.clear();
     }
 
@@ -140,6 +146,7 @@ public class DomainOfShadowsManager {
 
         private final ServerLevel level;
         private final BlockPos center;
+        private final UUID ownerId;
         private final int radius;
         private long expiryGameTime;
         private final int durationTicks;
@@ -148,8 +155,9 @@ public class DomainOfShadowsManager {
         private final List<Vec3> particlePositions;
         private boolean expired;
 
-        private ShadowDomain(ServerLevel level, BlockPos center, int radius, int durationTicks) {
+        private ShadowDomain(ServerLevel level, UUID ownerId, BlockPos center, int radius, int durationTicks) {
             this.level = level;
+            this.ownerId = ownerId;
             this.center = center;
             this.radius = Math.max(1, radius);
             this.expiryGameTime = level.getGameTime() + durationTicks;
@@ -180,9 +188,18 @@ public class DomainOfShadowsManager {
             return false;
         }
 
-        private void forceExpire() {
+        private void expire(boolean shouldApplyCooldown) {
+            if (expired) {
+                if (shouldApplyCooldown) {
+                    applyCooldown();
+                }
+                return;
+            }
             expired = true;
             expiryGameTime = level.getGameTime();
+            if (shouldApplyCooldown) {
+                applyCooldown();
+            }
         }
 
         private boolean containsPosition(BlockPos pos) {
@@ -195,6 +212,13 @@ public class DomainOfShadowsManager {
         private void spawnParticleDome() {
             for (Vec3 position : particlePositions) {
                 level.sendParticles(ParticleTypes.SMOKE, position.x, position.y, position.z, 1, 0.0, 0.0, 0.0, 0.0);
+            }
+        }
+
+        private void applyCooldown() {
+            Player owner = level.getPlayerByUUID(ownerId);
+            if (owner != null) {
+                owner.getCooldowns().addCooldown(Vfx.DOMAIN_OF_SHADOWS_RELIC.get(), durationTicks);
             }
         }
 
