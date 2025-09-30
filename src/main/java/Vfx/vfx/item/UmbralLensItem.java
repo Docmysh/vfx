@@ -16,6 +16,11 @@ import java.util.List;
 
 public class UmbralLensItem extends Item {
     private static final int NIGHT_VISION_DURATION_TICKS = 220;
+    /**
+     * Night vision begins to flash once its remaining duration dips below 200 ticks.
+     * Refresh slightly above that threshold so the player never experiences the flicker.
+     */
+    private static final int NIGHT_VISION_REFRESH_THRESHOLD_TICKS = 205;
 
     public UmbralLensItem(Properties properties) {
         super(properties);
@@ -38,7 +43,7 @@ public class UmbralLensItem extends Item {
         }
 
         MobEffectInstance existing = player.getEffect(MobEffects.NIGHT_VISION);
-        if (existing == null || existing.getDuration() <= 100) {
+        if (existing == null || existing.getDuration() <= NIGHT_VISION_REFRESH_THRESHOLD_TICKS) {
             player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, NIGHT_VISION_DURATION_TICKS, 0, false, false, true));
         }
     }

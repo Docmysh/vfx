@@ -9,7 +9,13 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.Attributes;
+import net.minecraft.world.entity.ai.goal.GoalSelector;
+import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
+import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Slime;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.TickEvent;
@@ -25,12 +31,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
 
 @Mod.EventBusSubscriber(modid = Vfx.MODID)
 public class ShadowSummonManager {
     public static final String SHADOW_TAG = "vfx_shadow_entity";
     private static final String BEHAVIOR_TAG = "vfx_shadow_behavior";
     private static final String OWNER_TAG = "vfx_shadow_owner";
+    private static final String COMBAT_READY_TAG = "vfx_shadow_combat_ready";
 
     private static final Map<UUID, ShadowData> SHADOWS = new HashMap<>();
     private static final Map<UUID, Set<UUID>> SHADOWS_BY_OWNER = new HashMap<>();
@@ -41,6 +49,11 @@ public class ShadowSummonManager {
         mob.getPersistentData().putUUID(OWNER_TAG, owner.getUUID());
         mob.setPersistenceRequired();
         mob.setNoAi(false);
+
+        if (!mob.getPersistentData().getBoolean(COMBAT_READY_TAG)) {
+            prepareShadowForCombat(mob);
+            mob.getPersistentData().putBoolean(COMBAT_READY_TAG, true);
+        }
 
         ShadowData data = new ShadowData(mob.level().dimension(), owner.getUUID());
         SHADOWS.put(mob.getUUID(), data);
@@ -55,9 +68,34 @@ public class ShadowSummonManager {
     }
 
     public static int getActiveShadowCount(ServerPlayer owner) {
+        return getActiveShadowCount(owner, mob -> true);
+    }
+
+    public static int getActiveShadowCount(ServerPlayer owner, Predicate<Mob> filter) {
         cleanupOwner(owner.getUUID(), owner.server);
         Set<UUID> ids = SHADOWS_BY_OWNER.get(owner.getUUID());
-        return ids == null ? 0 : ids.size();
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+        int count = 0;
+        for (UUID id : ids) {
+            ShadowData data = SHADOWS.get(id);
+            if (data == null) {
+                continue;
+            }
+            ServerLevel level = owner.server.getLevel(data.levelKey());
+            if (level == null) {
+                continue;
+            }
+            Entity entity = level.getEntity(id);
+            if (!(entity instanceof Mob mob) || !mob.isAlive() || !mob.getPersistentData().getBoolean(SHADOW_TAG)) {
+                continue;
+            }
+            if (filter.test(mob)) {
+                count++;
+            }
+        }
+        return count;
     }
 
     public static void updateOwnerBehavior(ServerPlayer owner, ShadowCollectorItem.ShadowBehavior behavior) {
@@ -279,6 +317,40 @@ public class ShadowSummonManager {
             if (ids.isEmpty()) {
                 SHADOWS_BY_OWNER.remove(ownerId);
             }
+        }
+    }
+
+    private static void prepareShadowForCombat(Mob mob) {
+        ensureAttackAttribute(mob);
+
+        if (mob instanceof Monster) {
+            return;
+        }
+        if (!hasGoalOfType(mob.targetSelector, HurtByTargetGoal.class)) {
+            mob.targetSelector.addGoal(1, new HurtByTargetGoal(mob).setAlertOthers());
+        }
+        if (mob instanceof Slime) {
+            return;
+        }
+
+        if (!hasGoalOfType(mob.goalSelector, MeleeAttackGoal.class)) {
+            mob.goalSelector.addGoal(2, new MeleeAttackGoal(mob, 1.2D, true));
+        }
+    }
+
+    private static boolean hasGoalOfType(GoalSelector selector, Class<?> goalClass) {
+        for (GoalSelector.WrappedGoal wrappedGoal : selector.getAvailableGoals()) {
+            if (goalClass.isInstance(wrappedGoal.getGoal())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static void ensureAttackAttribute(Mob mob) {
+        AttributeInstance attack = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (attack != null && attack.getBaseValue() < 2.0D) {
+            attack.setBaseValue(2.0D);
         }
     }
 

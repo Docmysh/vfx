@@ -244,11 +244,19 @@ public class ShadowCollectorItem extends Item {
     private static boolean summonShadow(ServerPlayer player, ResourceLocation typeId, ShadowBehavior behavior, boolean notifyPlayer, boolean ignoreLimit) {
         ServerLevel level = player.serverLevel();
         boolean insideDomain = DarknessDomainManager.get(level).isInsideDomain(player.blockPosition());
-        if (!ignoreLimit && !insideDomain && ShadowSummonManager.getActiveShadowCount(player) >= MAX_OUTSIDE_SHADOWS) {
-            if (notifyPlayer) {
-                player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.limit", MAX_OUTSIDE_SHADOWS), true);
+        if (!ignoreLimit && !insideDomain) {
+            int outsideShadows = ShadowSummonManager.getActiveShadowCount(player, mob -> {
+                if (!(mob.level() instanceof ServerLevel mobLevel)) {
+                    return true;
+                }
+                return !DarknessDomainManager.isInsideAnyDomain(mobLevel, mob.blockPosition());
+            });
+            if (outsideShadows >= MAX_OUTSIDE_SHADOWS) {
+                if (notifyPlayer) {
+                    player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.limit", MAX_OUTSIDE_SHADOWS), true);
+                }
+                return false;
             }
-            return false;
         }
 
         EntityType<?> entityType = ForgeRegistries.ENTITY_TYPES.getValue(typeId);

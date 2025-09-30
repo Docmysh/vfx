@@ -63,6 +63,14 @@ public class DarknessDomainManager {
         return false;
     }
 
+    public static boolean isInsideAnyDomain(ServerLevel level, BlockPos pos) {
+        DarknessDomainManager manager = MANAGERS.get(level.dimension());
+        if (manager == null || manager.level != level) {
+            return false;
+        }
+        return manager.isInsideDomain(pos);
+    }
+
 
     private boolean isDarknessBlock(BlockPos pos) {
         for (DarknessDomain domain : activeDomains) {

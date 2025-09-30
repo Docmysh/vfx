@@ -13,8 +13,6 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import org.slf4j.Logger;
 
-import java.io.IOException;
-
 @Mod.EventBusSubscriber(modid = Vfx.MODID, value = Dist.CLIENT)
 public class MonochromeVisionHandler {
     private static final Logger LOGGER = LogUtils.getLogger();
@@ -47,12 +45,8 @@ public class MonochromeVisionHandler {
         }
 
         GameRenderer renderer = minecraft.gameRenderer;
-        try {
-            renderer.loadEffect(MONOCHROME_SHADER);
-            shaderActive = true;
-        } catch (IOException exception) {
-            LOGGER.error("Failed to apply monochrome vision shader", exception);
-        }
+        renderer.loadEffect(MONOCHROME_SHADER);
+        shaderActive = true;
     }
 
     private static void clearShader(Minecraft minecraft) {
