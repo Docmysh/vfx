@@ -426,7 +426,7 @@ public class ShadowSummonManager {
         if (attack == null) {
             return;
         }
-        if (attack.getBaseValue() < 2.0D) {
+        if (attack != null && attack.getBaseValue() < 2.0D) {
             attack.setBaseValue(2.0D);
         }
     }

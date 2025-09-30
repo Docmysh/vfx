@@ -6,6 +6,7 @@ import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AreaEffectCloud;
@@ -110,8 +111,11 @@ public class DomainOfShadowsManager {
     }
 
     private static class ShadowDomain {
-        private static final double PARTICLE_STEP_RADIANS = Math.PI / 12.0;
-        private static final int PARTICLE_SPAWN_INTERVAL_TICKS = 5;
+        private static final double MIN_PARTICLE_STEP_RADIANS = Math.PI / 80.0;
+        private static final double MAX_PARTICLE_STEP_RADIANS = Math.PI / 8.0;
+        private static final double TARGET_ARC_LENGTH = 0.9;
+        private static final int PARTICLE_SPAWN_INTERVAL_TICKS = 2;
+        private static final int MIN_RADIAL_LAYERS = 2;
 
         private final ServerLevel level;
         private final BlockPos center;
@@ -164,14 +168,26 @@ public class DomainOfShadowsManager {
             double originY = center.getY() + 0.5;
             double originZ = center.getZ() + 0.5;
 
-            for (double theta = 0; theta <= Math.PI; theta += PARTICLE_STEP_RADIANS) {
+            int clampedRadius = Math.max(radius, 1);
+            double angularStep = TARGET_ARC_LENGTH / clampedRadius;
+            angularStep = Mth.clamp(angularStep, MIN_PARTICLE_STEP_RADIANS, MAX_PARTICLE_STEP_RADIANS);
+
+            int radialLayers = Math.max(MIN_RADIAL_LAYERS, clampedRadius / 6);
+            double radialStep = clampedRadius / (double) radialLayers;
+
+            for (double theta = 0; theta <= Math.PI; theta += angularStep) {
                 double sinTheta = Math.sin(theta);
                 double cosTheta = Math.cos(theta);
-                for (double phi = 0; phi < Math.PI * 2; phi += PARTICLE_STEP_RADIANS) {
-                    double x = originX + radius * sinTheta * Math.cos(phi);
-                    double y = originY + radius * cosTheta;
-                    double z = originZ + radius * sinTheta * Math.sin(phi);
-                    level.sendParticles(ParticleTypes.SMOKE, x, y, z, 1, 0, 0, 0, 0);
+                for (double phi = 0; phi < Math.PI * 2; phi += angularStep) {
+                    double cosPhi = Math.cos(phi);
+                    double sinPhi = Math.sin(phi);
+                    for (int layer = 0; layer < radialLayers; layer++) {
+                        double layerRadius = clampedRadius - layer * radialStep;
+                        double x = originX + layerRadius * sinTheta * cosPhi;
+                        double y = originY + layerRadius * cosTheta;
+                        double z = originZ + layerRadius * sinTheta * sinPhi;
+                        level.sendParticles(ParticleTypes.SMOKE, x, y, z, 2, 0.15, 0.15, 0.15, 0.0);
+                    }
                 }
             }
         }
