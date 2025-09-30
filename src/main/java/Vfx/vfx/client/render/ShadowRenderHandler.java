@@ -19,28 +19,23 @@ import net.minecraftforge.fml.common.Mod;
 
 @Mod.EventBusSubscriber(modid = Vfx.MODID, value = Dist.CLIENT)
 public class ShadowRenderHandler {
+    @SuppressWarnings("unchecked")
     @SubscribeEvent
-    public static void onRenderShadowPre(RenderLivingEvent.Pre<?, ?> event) {
-        if (!ShadowSummonManager.isShadowEntity(event.getEntity())) {
-            return;
-        }
-
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 0.35F);
-    }
-
-    @SubscribeEvent
-    public static void onRenderShadowPost(RenderLivingEvent.Post<?, ?> event) {
+    public static void onRenderShadow(RenderLivingEvent.Pre<?, ?> event) {
         LivingEntity entity = event.getEntity();
         if (!ShadowSummonManager.isShadowEntity(entity)) {
             return;
         }
 
-        LivingEntityRenderer<?, ?> renderer = event.getRenderer();
-        EntityModel<?> model = renderer.getModel();
-        @SuppressWarnings("unchecked")
-        ResourceLocation texture = ((LivingEntityRenderer<LivingEntity, ?>) renderer).getTextureLocation(entity);
+        event.setCanceled(true);
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+
+        LivingEntityRenderer<LivingEntity, EntityModel<LivingEntity>> renderer =
+                (LivingEntityRenderer<LivingEntity, EntityModel<LivingEntity>>) event.getRenderer();
+        EntityModel<LivingEntity> model = renderer.getModel();
+        ResourceLocation texture = renderer.getTextureLocation(entity);
         PoseStack poseStack = event.getPoseStack();
         MultiBufferSource buffer = event.getMultiBufferSource();
 
@@ -73,7 +68,6 @@ public class ShadowRenderHandler {
         poseStack.popPose();
         outlineBuffer.endOutlineBatch();
 
-        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.disableBlend();
     }
 }
