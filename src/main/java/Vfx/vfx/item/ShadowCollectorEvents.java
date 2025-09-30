@@ -98,10 +98,14 @@ public class ShadowCollectorEvents {
 
     private static boolean canEquipShadowItem(Mob mob, ItemStack stack, EquipmentSlot slot) {
         if (slot.getType() == EquipmentSlot.Type.ARMOR) {
-            return mob.isSlotEnabled(slot) && mob.canTakeItem(stack);
+            return mob.canTakeItem(stack);
         }
-        if (slot.getType() == EquipmentSlot.Type.HAND) {
-            return mob.isSlotEnabled(slot) && mob.canHoldItem(stack);
+        if (slot == EquipmentSlot.MAINHAND) {
+            return mob.canHoldItem(stack);
+        }
+        if (slot == EquipmentSlot.OFFHAND) {
+            ItemStack currentOffhand = mob.getItemBySlot(EquipmentSlot.OFFHAND);
+            return mob.canHoldItem(stack) || currentOffhand.isEmpty();
         }
         return false;
     }
