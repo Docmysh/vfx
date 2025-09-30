@@ -211,7 +211,7 @@ public class DomainOfShadowsManager {
 
         private void spawnParticleDome() {
             for (Vec3 position : particlePositions) {
-                level.sendParticles(VfxParticles.SHADOW_DOT.get(), true, position.x, position.y, position.z, 1, 0.0, 0.0, 0.0, 0.0);
+                level.sendParticles(VfxParticles.SHADOW_DOT.get(), position.x, position.y, position.z, 1, 0.0, 0.0, 0.0, 0.0);
             }
         }
 
