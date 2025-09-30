@@ -12,6 +12,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 import net.minecraftforge.event.entity.living.LivingDeathEvent;
 import net.minecraftforge.event.entity.player.PlayerInteractEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -61,6 +62,10 @@ public class ShadowCollectorEvents {
             return;
         }
 
+        if (!player.isShiftKeyDown()) {
+            return;
+        }
+
         ItemStack stack = event.getItemStack();
         if (stack.isEmpty()) {
             return;
@@ -97,17 +102,19 @@ public class ShadowCollectorEvents {
     }
 
     private static boolean canEquipShadowItem(Mob mob, ItemStack stack, EquipmentSlot slot) {
-        if (slot.getType() == EquipmentSlot.Type.ARMOR) {
-            return mob.canTakeItem(stack);
+        if (slot.getType() != EquipmentSlot.Type.ARMOR && slot != EquipmentSlot.MAINHAND && slot != EquipmentSlot.OFFHAND) {
+            return false;
         }
-        if (slot == EquipmentSlot.MAINHAND) {
-            return mob.canHoldItem(stack);
+
+        if (stack.getItem() instanceof ShadowCollectorItem) {
+            return false;
         }
-        if (slot == EquipmentSlot.OFFHAND) {
-            ItemStack currentOffhand = mob.getItemBySlot(EquipmentSlot.OFFHAND);
-            return mob.canHoldItem(stack) || currentOffhand.isEmpty();
+
+        if (stack.is(Items.NAME_TAG)) {
+            return false;
         }
-        return false;
+
+        return true;
     }
 
     private static boolean equipShadowItem(Player player, Mob mob, EquipmentSlot slot, ItemStack item) {
