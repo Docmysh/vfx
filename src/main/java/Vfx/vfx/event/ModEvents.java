@@ -19,7 +19,7 @@ public class ModEvents {
             if (LivingEntity.class.isAssignableFrom(type.getBaseClass())) {
                 @SuppressWarnings("unchecked")
                 EntityType<? extends LivingEntity> livingEntityType = (EntityType<? extends LivingEntity>) type;
-                AttributeSupplier.Builder builder = event.get(livingEntityType);
+                AttributeSupplier.Builder builder = event.getAttributes().get(livingEntityType);
                 if (builder != null && !builder.hasAttribute(Attributes.ATTACK_DAMAGE)) {
                     builder.add(Attributes.ATTACK_DAMAGE, 0.0D);
                 }
