@@ -200,6 +200,12 @@ public class DarknessDomainManager {
             return originalBlocks.containsKey(pos);
         }
 
+        private boolean containsPosition(BlockPos pos) {
+            return pos.getX() >= minX && pos.getX() <= maxX
+                    && pos.getY() >= minY && pos.getY() <= maxY
+                    && pos.getZ() >= minZ && pos.getZ() <= maxZ;
+        }
+
         private void applyDarknessEffect() {
             int effectDuration = Math.max(20, Math.min(durationTicks, 60));
             for (ServerPlayer player : level.getEntitiesOfClass(ServerPlayer.class, bounds, p -> !p.isSpectator())) {

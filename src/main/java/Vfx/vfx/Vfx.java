@@ -20,6 +20,7 @@ import net.minecraft.world.level.block.state.BlockBehaviour;
 import net.minecraft.world.level.material.MapColor;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.server.ServerStartingEvent;
 import net.minecraftforge.eventbus.api.IEventBus;
@@ -32,7 +33,6 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.IForgeMenuType;
 import net.minecraftforge.registries.RegistryObject;
 import org.slf4j.Logger;
 
@@ -64,7 +64,10 @@ public class Vfx {
 
     public static final RegistryObject<Item> SHADOW_COLLECTOR = ITEMS.register("shadow_collector", () -> new ShadowCollectorItem(new Item.Properties().stacksTo(1)));
 
-    public static final RegistryObject<MenuType<ShadowSelectionMenu>> SHADOW_SELECTION_MENU = MENUS.register("shadow_selection", () -> IForgeMenuType.create(ShadowSelectionMenu::new));
+    public static final RegistryObject<MenuType<ShadowSelectionMenu>> SHADOW_SELECTION_MENU = MENUS.register(
+            "shadow_selection",
+            () -> IForgeMenuType.create((windowId, inventory, data) -> new ShadowSelectionMenu(windowId, inventory, data))
+    );
 
     // Creates a creative tab with the id "vfx:example_tab" for the example item, that is placed after the combat tab
     public static final RegistryObject<CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder().withTabsBefore(CreativeModeTabs.COMBAT).icon(() -> EXAMPLE_ITEM.get().getDefaultInstance()).displayItems((parameters, output) -> {
