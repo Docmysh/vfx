@@ -1,6 +1,7 @@
 package Vfx.vfx.item;
 
 import Vfx.vfx.domain.DarknessDomainManager;
+import Vfx.vfx.shadow.ShadowSummonManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -18,8 +19,6 @@ import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.effect.MobEffectInstance;
-import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -39,17 +38,84 @@ import java.util.Set;
 import Vfx.vfx.menu.ShadowSelectionMenu;
 import net.minecraft.world.entity.LivingEntity;
 
+
 public class ShadowCollectorItem extends Item {
     private static final String TAG_SHADOWS = "Shadows";
+    private static final String TAG_BEHAVIOR = "ShadowBehavior";
     private static final String SHADOW_TEAM = "vfx_shadow_team";
+    private static final int MAX_OUTSIDE_SHADOWS = 3;
+
+    public enum ShadowBehavior {
+        PASSIVE("behavior.vfx.shadow.passive"),
+        NEUTRAL("behavior.vfx.shadow.neutral"),
+        HOSTILE("behavior.vfx.shadow.hostile");
+
+        private final String translationKey;
+
+        ShadowBehavior(String translationKey) {
+            this.translationKey = translationKey;
+        }
+
+        public Component getDisplayName() {
+            return Component.translatable(this.translationKey);
+        }
+
+        public ShadowBehavior next() {
+            ShadowBehavior[] values = values();
+            return values[(this.ordinal() + 1) % values.length];
+        }
+
+        public static ShadowBehavior byName(String name) {
+            for (ShadowBehavior behavior : values()) {
+                if (behavior.name().equalsIgnoreCase(name)) {
+                    return behavior;
+                }
+            }
+            return PASSIVE;
+        }
+    }
+
 
     public ShadowCollectorItem(Properties properties) {
         super(properties);
     }
 
+    public static ShadowBehavior getBehavior(ItemStack stack) {
+        if (!(stack.getItem() instanceof ShadowCollectorItem)) {
+            return ShadowBehavior.PASSIVE;
+        }
+        CompoundTag tag = stack.getTag();
+        if (tag != null && tag.contains(TAG_BEHAVIOR, Tag.TAG_STRING)) {
+            return ShadowBehavior.byName(tag.getString(TAG_BEHAVIOR));
+        }
+        return ShadowBehavior.PASSIVE;
+    }
+
+    public static void setBehavior(ItemStack stack, ShadowBehavior behavior) {
+        if (!(stack.getItem() instanceof ShadowCollectorItem)) {
+            return;
+        }
+        stack.getOrCreateTag().putString(TAG_BEHAVIOR, behavior.name());
+    }
+
+    public static ShadowBehavior cycleBehavior(ItemStack stack) {
+        ShadowBehavior next = getBehavior(stack).next();
+        setBehavior(stack, next);
+        return next;
+    }
+
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        if (player.isShiftKeyDown()) {
+            ShadowBehavior behavior = cycleBehavior(stack);
+            Component message = Component.translatable("message.vfx.shadow_collector.behavior", behavior.getDisplayName());
+            if (player instanceof ServerPlayer serverPlayer) {
+                serverPlayer.displayClientMessage(message, true);
+                ShadowSummonManager.updateOwnerBehavior(serverPlayer, behavior);
+            }
+            return InteractionResultHolder.success(stack);
+        }
         if (!(player instanceof ServerPlayer serverPlayer)) {
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
@@ -81,6 +147,8 @@ public class ShadowCollectorItem extends Item {
     public void appendHoverText(ItemStack stack, Level level, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.vfx.shadow_collector.count", getShadowCount(stack))
                 .withStyle(ChatFormatting.GRAY));
+        tooltip.add(Component.translatable("tooltip.vfx.shadow_collector.behavior", getBehavior(stack).getDisplayName())
+                .withStyle(ChatFormatting.DARK_GRAY));
     }
 
     public static boolean storeShadow(ItemStack stack, Entity entity) {
@@ -151,8 +219,9 @@ public class ShadowCollectorItem extends Item {
 
     private static void summonAllShadows(ServerPlayer player, ItemStack stack, List<ResourceLocation> stored) {
         Set<ResourceLocation> summoned = new HashSet<>();
+        ShadowBehavior behavior = getBehavior(stack);
         for (ResourceLocation typeId : stored) {
-            if (summonShadow(player, typeId, false)) {
+            if (summonShadow(player, typeId, behavior, false, true)) {
                 summoned.add(typeId);
             }
         }
@@ -164,12 +233,24 @@ public class ShadowCollectorItem extends Item {
         }
     }
 
-    public static boolean summonShadow(ServerPlayer player, ResourceLocation typeId) {
-        return summonShadow(player, typeId, true);
+    public static boolean summonShadow(ServerPlayer player, ResourceLocation typeId, ShadowBehavior behavior) {
+        return summonShadow(player, typeId, behavior, true, false);
     }
 
-    public static boolean summonShadow(ServerPlayer player, ResourceLocation typeId, boolean notifyPlayer) {
+    public static boolean summonShadow(ServerPlayer player, ResourceLocation typeId, ShadowBehavior behavior, boolean notifyPlayer) {
+        return summonShadow(player, typeId, behavior, notifyPlayer, false);
+    }
+
+    private static boolean summonShadow(ServerPlayer player, ResourceLocation typeId, ShadowBehavior behavior, boolean notifyPlayer, boolean ignoreLimit) {
         ServerLevel level = player.serverLevel();
+        boolean insideDomain = DarknessDomainManager.get(level).isInsideDomain(player.blockPosition());
+        if (!ignoreLimit && !insideDomain && ShadowSummonManager.getActiveShadowCount(player) >= MAX_OUTSIDE_SHADOWS) {
+            if (notifyPlayer) {
+                player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.limit", MAX_OUTSIDE_SHADOWS), true);
+            }
+            return false;
+        }
+
         EntityType<?> entityType = ForgeRegistries.ENTITY_TYPES.getValue(typeId);
         if (entityType == null) {
             if (notifyPlayer) {
@@ -189,6 +270,7 @@ public class ShadowCollectorItem extends Item {
         mob.moveTo(player.getX(), player.getY(), player.getZ(), level.random.nextFloat() * 360.0F, 0);
         mob.finalizeSpawn(level, level.getCurrentDifficultyAt(player.blockPosition()), MobSpawnType.MOB_SUMMONED, null, null);
         applyShadowAppearance(mob);
+        ShadowSummonManager.registerShadow(mob, player, behavior);
         level.addFreshEntity(mob);
         if (notifyPlayer) {
             player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.summoned", mob.getDisplayName()), true);
@@ -199,8 +281,6 @@ public class ShadowCollectorItem extends Item {
     private static void applyShadowAppearance(Mob mob) {
         mob.setCustomName(Component.translatable("entity.vfx.shadow", mob.getType().getDescription()).withStyle(ChatFormatting.DARK_GRAY));
         mob.setCustomNameVisible(true);
-        mob.addEffect(new MobEffectInstance(MobEffects.INVISIBILITY, Integer.MAX_VALUE, 0, false, false));
-        mob.addEffect(new MobEffectInstance(MobEffects.GLOWING, Integer.MAX_VALUE, 0, false, false));
 
         Level level = mob.level();
         if (level instanceof ServerLevel serverLevel) {
@@ -208,7 +288,9 @@ public class ShadowCollectorItem extends Item {
             PlayerTeam team = scoreboard.getPlayerTeam(SHADOW_TEAM);
             if (team == null) {
                 team = scoreboard.addPlayerTeam(SHADOW_TEAM);
-                team.setColor(ChatFormatting.DARK_GRAY);
+                team.setColor(ChatFormatting.BLACK);
+                team.setAllowFriendlyFire(false);
+                team.setSeeFriendlyInvisibles(true);
             }
             scoreboard.addPlayerToTeam(mob.getStringUUID(), team);
         }

@@ -22,9 +22,11 @@ import net.minecraftforge.fml.common.Mod;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Mod.EventBusSubscriber(modid = Vfx.MODID)
 public class DarknessDomainManager {
@@ -237,11 +239,18 @@ public class DarknessDomainManager {
         }
 
         private void revert() {
-            originalBlocks.forEach((pos, state) -> {
-                if (level.isLoaded(pos)) {
-                    level.setBlock(pos, state, 3);
-                }
-            });
+            if (originalBlocks.isEmpty()) {
+                return;
+            }
+
+            Set<ChunkPos> chunksToLoad = new HashSet<>();
+            originalBlocks.keySet().forEach(pos -> chunksToLoad.add(new ChunkPos(pos)));
+            for (ChunkPos chunkPos : chunksToLoad) {
+                level.getChunkSource().addRegionTicket(TicketType.POST_TELEPORT, chunkPos, 1, 1);
+                level.getChunk(chunkPos.x, chunkPos.z);
+            }
+
+            originalBlocks.forEach((pos, state) -> level.setBlock(pos, state, 3));
             originalBlocks.clear();
         }
     }

@@ -7,8 +7,14 @@
   "message.vfx.shadow_collector.summoned": "Summoned %s from the reliquary.",
   "message.vfx.shadow_collector.summon_all": "Released %s shadows from the reliquary.",
   "message.vfx.shadow_collector.failed": "The shadows refuse to answer the call.",
+  "message.vfx.shadow_collector.behavior": "Shadow stance set to %s.",
+  "message.vfx.shadow_collector.limit": "Only %s shadows can manifest beyond the darkness.",
   "screen.vfx.shadow_collector": "Shadow Reliquary",
   "screen.vfx.shadow_collector.page": "Page %1$s / %2$s",
   "menu.vfx.shadow_collector.entry": "Summon %s",
-  "entity.vfx.shadow": "Shadow %s"
+  "tooltip.vfx.shadow_collector.behavior": "Current Stance: %s",
+  "entity.vfx.shadow": "Shadow %s",
+  "behavior.vfx.shadow.passive": "Passive",
+  "behavior.vfx.shadow.neutral": "Neutral",
+  "behavior.vfx.shadow.hostile": "Hostile"
 }

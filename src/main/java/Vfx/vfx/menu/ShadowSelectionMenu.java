@@ -105,7 +105,7 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
             if (globalIndex < shadows.size()) {
                 ResourceLocation typeId = shadows.get(globalIndex);
                 if (!player.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
-                    if (ShadowCollectorItem.summonShadow(serverPlayer, typeId) && !collectorStack.isEmpty()) {
+                    if (ShadowCollectorItem.summonShadow(serverPlayer, typeId, ShadowCollectorItem.getBehavior(collectorStack)) && !collectorStack.isEmpty()) {
                         ShadowCollectorItem.consumeShadow(collectorStack, typeId);
                     }
                 }
