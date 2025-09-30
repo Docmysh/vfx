@@ -162,7 +162,7 @@ public class DarknessDomainManager {
         private void spawnDarknessCloud(int half) {
             AreaEffectCloud cloud = new AreaEffectCloud(level, center.getX() + 0.5, center.getY() + 1, center.getZ() + 0.5);
             cloud.setRadius(Math.max(half, 1));
-            cloud.setDuration(Math.max(durationTicks, 1));
+            cloud.setDuration(1);
             cloud.setWaitTime(0);
             cloud.setRadiusPerTick(0);
             cloud.addEffect(new MobEffectInstance(MobEffects.DARKNESS, Math.max(durationTicks, 1)));
