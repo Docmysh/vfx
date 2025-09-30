@@ -1,6 +1,7 @@
 package Vfx.vfx.mixin;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.main.GameConfig;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -31,7 +32,7 @@ public abstract class MinecraftPhotonFpsCompatMixin {
     }
 
     @Inject(method = "<init>", at = @At("TAIL"), require = 0)
-    private void vfx$initPhotonCompat(Minecraft.RunArgs config, CallbackInfo ci) {
+    private void vfx$initPhotonCompat(GameConfig config, CallbackInfo ci) {
         vfx$syncPhotonFpsField();
     }
 
