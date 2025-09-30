@@ -7,6 +7,7 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.inventory.Slot;
 
 public class ShadowSelectionScreen extends AbstractContainerScreen<ShadowSelectionMenu> {
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/generic_54.png");
@@ -65,6 +66,22 @@ public class ShadowSelectionScreen extends AbstractContainerScreen<ShadowSelecti
         this.renderBackground(guiGraphics);
         super.render(guiGraphics, mouseX, mouseY, partialTick);
         this.renderTooltip(guiGraphics, mouseX, mouseY);
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (button == 0 && this.minecraft != null && this.minecraft.gameMode != null) {
+            Slot hovered = this.hoveredSlot;
+            if (hovered != null && hovered.hasItem() && this.menu.isShadowSlot(hovered)) {
+                int slotIndex = this.menu.getSlotIndex(hovered);
+                if (slotIndex >= 0) {
+                    this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId,
+                            this.menu.getButtonIdForSlot(slotIndex));
+                    return true;
+                }
+            }
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 
     private void updateLayout() {

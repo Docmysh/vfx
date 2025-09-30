@@ -27,9 +27,10 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
     private static final int MAX_ROWS = 6;
     private static final int SLOTS_PER_ROW = 9;
     private static final int SLOTS_PER_PAGE = MAX_ROWS * SLOTS_PER_ROW;
+    private static final int SLOT_BUTTON_OFFSET = 2;
     private final List<ResourceLocation> shadows;
     private final SimpleContainer container;
-    private final int totalPages;
+    private int totalPages;
     private int page = 0;
     private int visibleRows = 1;
     private final InteractionHand hand;
@@ -41,7 +42,6 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
     public ShadowSelectionMenu(int id, Inventory inventory, List<ResourceLocation> shadows, InteractionHand hand) {
         super(Vfx.SHADOW_SELECTION_MENU.get(), id);
         this.shadows = new ArrayList<>(shadows);
-        this.totalPages = Math.max(1, (int) Math.ceil((double) this.shadows.size() / SLOTS_PER_PAGE));
         this.container = new SimpleContainer(SLOTS_PER_PAGE);
         this.hand = hand;
 
@@ -62,7 +62,7 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
             }
         }
 
-        updateDisplayedStacks();
+        refreshContents();
     }
 
     public static void writeData(FriendlyByteBuf buffer, List<ResourceLocation> shadows, InteractionHand hand) {
@@ -106,30 +106,9 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
 
     @Override
     public void clicked(int slotId, int button, ClickType clickType, Player player) {
-        if (slotId >= 0 && slotId < SLOTS_PER_PAGE) {
-            int globalIndex = this.page * SLOTS_PER_PAGE + slotId;
-            if (globalIndex < shadows.size()) {
-                ResourceLocation typeId = shadows.get(globalIndex);
-                if (!player.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
-                    ItemStack collector = player.getItemInHand(hand);
-                    if (collector.getItem() instanceof ShadowCollectorItem) {
-                        ShadowCollectorItem.ShadowBehavior behavior = ShadowCollectorItem.getBehavior(collector);
-                        if (ShadowCollectorItem.summonShadow(serverPlayer, typeId, behavior) && !collector.isEmpty()) {
-                            ShadowCollectorItem.consumeShadow(collector, typeId);
-                            shadows.remove(globalIndex);
-                            updateDisplayedStacks();
-                        }
-                    }
-                }
-            }
-            if (!player.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
-                serverPlayer.closeContainer();
-            } else {
-                player.closeContainer();
-            }
-            return;
+        if (!handleSummonClick(player, slotId)) {
+            super.clicked(slotId, button, clickType, player);
         }
-        super.clicked(slotId, button, clickType, player);
     }
 
     @Override
@@ -168,6 +147,9 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
             changePage(1);
             return true;
         }
+        if (id >= SLOT_BUTTON_OFFSET && id < SLOT_BUTTON_OFFSET + SLOTS_PER_PAGE) {
+            return handleSummonClick(player, id - SLOT_BUTTON_OFFSET);
+        }
         return super.clickMenuButton(player, id);
     }
 
@@ -181,6 +163,60 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
             updateDisplayedStacks();
             this.broadcastChanges();
         }
+    }
+
+    public boolean isShadowSlot(Slot slot) {
+        return slot != null && slot.container == this.container;
+    }
+
+    public int getButtonIdForSlot(int slotIndex) {
+        return SLOT_BUTTON_OFFSET + slotIndex;
+    }
+
+    public int getSlotIndex(Slot slot) {
+        return this.slots.indexOf(slot);
+    }
+
+    private boolean handleSummonClick(Player player, int slotIndex) {
+        if (slotIndex < 0 || slotIndex >= SLOTS_PER_PAGE) {
+            return false;
+        }
+        int globalIndex = this.page * SLOTS_PER_PAGE + slotIndex;
+        if (globalIndex >= shadows.size()) {
+            closeMenu(player);
+            return true;
+        }
+
+        ResourceLocation typeId = shadows.get(globalIndex);
+        if (!player.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
+            ItemStack collector = player.getItemInHand(hand);
+            if (collector.getItem() instanceof ShadowCollectorItem) {
+                ShadowCollectorItem.ShadowBehavior behavior = ShadowCollectorItem.getBehavior(collector);
+                if (ShadowCollectorItem.summonShadow(serverPlayer, typeId, behavior) && !collector.isEmpty()) {
+                    ShadowCollectorItem.consumeShadow(collector, typeId);
+                    shadows.remove(globalIndex);
+                    refreshContents();
+                    this.broadcastChanges();
+                }
+            }
+        }
+
+        closeMenu(player);
+        return true;
+    }
+
+    private void closeMenu(Player player) {
+        if (player instanceof ServerPlayer serverPlayer) {
+            serverPlayer.closeContainer();
+        } else {
+            player.closeContainer();
+        }
+    }
+
+    private void refreshContents() {
+        this.totalPages = Math.max(1, (int) Math.ceil((double) this.shadows.size() / SLOTS_PER_PAGE));
+        this.page = Mth.clamp(this.page, 0, this.totalPages - 1);
+        updateDisplayedStacks();
     }
 
     private void updateDisplayedStacks() {
