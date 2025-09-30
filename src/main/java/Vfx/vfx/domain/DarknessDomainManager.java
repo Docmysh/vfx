@@ -12,6 +12,8 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -62,7 +64,7 @@ public class DarknessDomainManager {
         Iterator<DarknessDomain> iterator = activeDomains.iterator();
         while (iterator.hasNext()) {
             DarknessDomain domain = iterator.next();
-            if (domain.isExpired()) {
+            if (domain.tickAndCheckExpired()) {
                 domain.revert();
                 iterator.remove();
             }
@@ -106,28 +108,34 @@ public class DarknessDomainManager {
         private final ServerLevel level;
         private final Map<BlockPos, BlockState> originalBlocks = new HashMap<>();
         private final long expiryGameTime;
-        private final int size;
         private final BlockPos center;
         private final int durationTicks;
+        private final int half;
+        private final int minX;
+        private final int maxX;
+        private final int minY;
+        private final int maxY;
+        private final int minZ;
+        private final int maxZ;
+        private final AABB bounds;
 
         private DarknessDomain(ServerLevel level, BlockPos center, int size, int durationTicks) {
             this.level = level;
             this.center = center;
-            this.size = size;
             this.expiryGameTime = level.getGameTime() + durationTicks;
             this.durationTicks = durationTicks;
+            this.half = size / 2;
+            this.minY = Math.max(level.getMinBuildHeight(), center.getY() - half);
+            this.maxY = Math.min(level.getMaxBuildHeight() - 1, center.getY() + half);
+            this.minX = center.getX() - half;
+            this.maxX = center.getX() + half;
+            this.minZ = center.getZ() - half;
+            this.maxZ = center.getZ() + half;
+            this.bounds = new AABB(minX, minY, minZ, maxX + 1, maxY + 1, maxZ + 1);
         }
 
         private void apply() {
-            int half = size / 2;
             BlockPos.MutableBlockPos mutable = new BlockPos.MutableBlockPos();
-            int minY = Math.max(level.getMinBuildHeight(), center.getY() - half);
-            int maxY = Math.min(level.getMaxBuildHeight() - 1, center.getY() + half);
-
-            int minX = center.getX() - half;
-            int maxX = center.getX() + half;
-            int minZ = center.getZ() - half;
-            int maxZ = center.getZ() + half;
 
             for (int x = minX; x <= maxX; x++) {
                 boolean boundaryX = x == minX || x == maxX;
@@ -150,7 +158,8 @@ public class DarknessDomainManager {
                 }
             }
 
-            spawnDarknessCloud(half);
+            spawnDarknessCloud();
+            applyDarknessEffect();
         }
 
         private void ensureChunksLoaded(int x, int z) {
@@ -159,7 +168,7 @@ public class DarknessDomainManager {
             level.getChunkSource().addRegionTicket(TicketType.POST_TELEPORT, targetChunk, 1, 1);
         }
 
-        private void spawnDarknessCloud(int half) {
+        private void spawnDarknessCloud() {
             AreaEffectCloud cloud = new AreaEffectCloud(level, center.getX() + 0.5, center.getY() + 1, center.getZ() + 0.5);
             cloud.setRadius(Math.max(half, 1));
             cloud.setDuration(1);
@@ -169,14 +178,27 @@ public class DarknessDomainManager {
             level.addFreshEntity(cloud);
         }
 
-        private boolean isExpired() {
-            return level.getGameTime() >= expiryGameTime;
+        private boolean tickAndCheckExpired() {
+            if (level.getGameTime() >= expiryGameTime) {
+                return true;
+            }
+            applyDarknessEffect();
+            return false;
         }
 
         private boolean contains(BlockPos pos) {
             return originalBlocks.containsKey(pos);
         }
 
+        private void applyDarknessEffect() {
+            int effectDuration = Math.max(20, Math.min(durationTicks, 60));
+            for (ServerPlayer player : level.getEntitiesOfClass(ServerPlayer.class, bounds, p -> !p.isSpectator())) {
+                MobEffectInstance existing = player.getEffect(MobEffects.DARKNESS);
+                if (existing == null || existing.getDuration() <= effectDuration / 2) {
+                    player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, effectDuration, 0, false, false, true));
+                }
+            }
+        }
 
         private void revert() {
             originalBlocks.forEach((pos, state) -> {
