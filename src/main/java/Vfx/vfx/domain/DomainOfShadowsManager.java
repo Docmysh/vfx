@@ -276,13 +276,13 @@ public class DomainOfShadowsManager {
         }
 
         private void applyDarknessEffect() {
-            int effectDuration = Math.max(20, Math.min(durationTicks, 60));
+            int effectDuration = Math.max(80, Math.min(durationTicks, 200));
             for (ServerPlayer player : level.getEntitiesOfClass(ServerPlayer.class, bounds, p -> !p.isSpectator())) {
                 if (!containsPosition(player.blockPosition())) {
                     continue;
                 }
                 MobEffectInstance existing = player.getEffect(MobEffects.DARKNESS);
-                if (existing == null || existing.getDuration() <= effectDuration / 2) {
+                if (existing == null || existing.getDuration() <= 20) {
                     player.addEffect(new MobEffectInstance(MobEffects.DARKNESS, effectDuration, 0, false, false, true));
                 }
             }

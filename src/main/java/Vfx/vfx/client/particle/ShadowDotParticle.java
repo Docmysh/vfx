@@ -9,17 +9,18 @@ import net.minecraft.client.particle.TextureSheetParticle;
 import net.minecraft.core.particles.SimpleParticleType;
 
 public class ShadowDotParticle extends TextureSheetParticle {
-    private ShadowDotParticle(ClientLevel level, double x, double y, double z, double xd, double yd, double zd) {
+    private ShadowDotParticle(ClientLevel level, double x, double y, double z, double xd, double yd, double zd, SpriteSet sprite) {
         super(level, x, y, z, xd, yd, zd);
         this.friction = 1.0F;
         this.gravity = 0.0F;
         this.hasPhysics = false;
         this.lifetime = 40 + this.random.nextInt(20);
-        this.quadSize = 0.18F;
+        this.quadSize = 0.3F;
         this.rCol = 0.1F;
         this.gCol = 0.1F;
         this.bCol = 0.1F;
         this.setAlpha(0.85F);
+        this.setSprite(sprite.get(0, 0));
     }
 
     @Override
@@ -46,8 +47,7 @@ public class ShadowDotParticle extends TextureSheetParticle {
 
         @Override
         public Particle createParticle(SimpleParticleType type, ClientLevel level, double x, double y, double z, double xd, double yd, double zd) {
-            ShadowDotParticle particle = new ShadowDotParticle(level, x, y, z, 0.0D, 0.0D, 0.0D);
-            particle.pickSprite(this.sprite);
+            ShadowDotParticle particle = new ShadowDotParticle(level, x, y, z, 0.0D, 0.0D, 0.0D, this.sprite);
             return particle;
         }
     }
