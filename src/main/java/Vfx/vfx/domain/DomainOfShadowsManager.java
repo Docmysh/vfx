@@ -115,7 +115,6 @@ public class DomainOfShadowsManager {
         private static final double MAX_PARTICLE_STEP_RADIANS = Math.PI / 8.0;
         private static final double TARGET_ARC_LENGTH = 0.9;
         private static final int PARTICLE_SPAWN_INTERVAL_TICKS = 2;
-        private static final int MIN_RADIAL_LAYERS = 2;
 
         private final ServerLevel level;
         private final BlockPos center;
@@ -172,22 +171,16 @@ public class DomainOfShadowsManager {
             double angularStep = TARGET_ARC_LENGTH / clampedRadius;
             angularStep = Mth.clamp(angularStep, MIN_PARTICLE_STEP_RADIANS, MAX_PARTICLE_STEP_RADIANS);
 
-            int radialLayers = Math.max(MIN_RADIAL_LAYERS, clampedRadius / 6);
-            double radialStep = clampedRadius / (double) radialLayers;
-
             for (double theta = 0; theta <= Math.PI; theta += angularStep) {
                 double sinTheta = Math.sin(theta);
                 double cosTheta = Math.cos(theta);
                 for (double phi = 0; phi < Math.PI * 2; phi += angularStep) {
                     double cosPhi = Math.cos(phi);
                     double sinPhi = Math.sin(phi);
-                    for (int layer = 0; layer < radialLayers; layer++) {
-                        double layerRadius = clampedRadius - layer * radialStep;
-                        double x = originX + layerRadius * sinTheta * cosPhi;
-                        double y = originY + layerRadius * cosTheta;
-                        double z = originZ + layerRadius * sinTheta * sinPhi;
-                        level.sendParticles(ParticleTypes.SMOKE, x, y, z, 2, 0.15, 0.15, 0.15, 0.0);
-                    }
+                    double x = originX + clampedRadius * sinTheta * cosPhi;
+                    double y = originY + clampedRadius * cosTheta;
+                    double z = originZ + clampedRadius * sinTheta * sinPhi;
+                    level.sendParticles(ParticleTypes.SMOKE, x, y, z, 2, 0.15, 0.15, 0.15, 0.0);
                 }
             }
         }
