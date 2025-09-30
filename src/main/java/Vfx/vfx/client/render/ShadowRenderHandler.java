@@ -52,7 +52,7 @@ public class ShadowRenderHandler {
             );
             renderer.render(
                     entity,
-                    event.getEntityYaw(),
+                    entity.getViewYRot(event.getPartialTick()),
                     event.getPartialTick(),
                     event.getPoseStack(),
                     tintedSource,
