@@ -177,7 +177,8 @@ public class ShadowCollectorItem extends Item {
             return InteractionResult.PASS;
         }
 
-        if (storeShadow(stack, mob)) {
+        ItemStack heldStack = player.getItemInHand(hand);
+        if (storeShadow(heldStack, mob)) {
             ShadowSummonManager.unregisterShadow(mob);
             mob.discard();
             serverPlayer.displayClientMessage(Component.translatable("message.vfx.shadow_collector.captured", mob.getDisplayName()), true);
