@@ -165,7 +165,7 @@ public class DarknessDomainManager {
             this.expiryGameTime = level.getGameTime() + durationTicks;
             this.durationTicks = durationTicks;
             this.half = size / 2;
-            this.minY = Math.max(level.getMinBuildHeight(), center.getY());
+            this.minY = Math.max(level.getMinBuildHeight(), center.getY()-1);
             this.maxY = Math.min(level.getMaxBuildHeight() - 1, center.getY() + half);
             this.minX = center.getX() - half;
             this.maxX = center.getX() + half;
