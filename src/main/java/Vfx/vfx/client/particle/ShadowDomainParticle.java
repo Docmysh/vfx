@@ -1,59 +1,94 @@
 package Vfx.vfx.client.particle;
 
+import Vfx.vfx.VfxParticles;
 import Vfx.vfx.particle.ShadowDomainParticleOptions;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.particle.NoRenderParticle;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleProvider;
-import net.minecraft.client.particle.ParticleRenderType;
 import net.minecraft.client.particle.SpriteSet;
-import net.minecraft.client.particle.TextureSheetParticle;
+import net.minecraft.util.Mth;
 
-public class ShadowDomainParticle extends TextureSheetParticle {
-    private static final float BASE_ALPHA = 0.65F;
-    private static final float MIN_ALPHA = 0.2F;
-    private static final float SIZE_PADDING = 1.5F;
+public class ShadowDomainParticle extends NoRenderParticle {
+    private static final float MIN_RADIUS = 1.0F;
+    private static final float DOT_SPACING = 0.85F;
+    private static final float RANDOM_OFFSET = 0.12F;
 
-    private final SpriteSet sprites;
+    private final float radius;
 
-    private ShadowDomainParticle(ClientLevel level, double x, double y, double z, SpriteSet sprite, ShadowDomainParticleOptions options) {
+    private ShadowDomainParticle(ClientLevel level, double x, double y, double z, ShadowDomainParticleOptions options) {
         super(level, x, y, z, 0.0D, 0.0D, 0.0D);
-        this.friction = 1.0F;
+        this.radius = Math.max(options.radius(), MIN_RADIUS);
         this.gravity = 0.0F;
         this.hasPhysics = false;
         this.lifetime = Math.max(options.lifetime(), 1);
-        this.quadSize = Math.max(options.radius() * 2.0F + SIZE_PADDING, 0.5F);
-        this.sprites = sprite;
-        this.setSpriteFromAge(this.sprites);
-        this.setAlpha(BASE_ALPHA);
+        spawnDome();
     }
 
     @Override
     public void tick() {
-        super.tick();
-        if (!this.removed && this.lifetime > 0) {
-            float progress = (float) this.age / (float) this.lifetime;
-            progress = Math.min(Math.max(progress, 0.0F), 1.0F);
-            float alpha = BASE_ALPHA * (1.0F - progress) + MIN_ALPHA * progress;
-            this.setAlpha(alpha);
-            this.setSpriteFromAge(this.sprites);
+        if (this.age++ >= this.lifetime) {
+            this.remove();
         }
     }
 
-    @Override
-    public ParticleRenderType getRenderType() {
-        return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;
+    private void spawnDome() {
+        double centerX = this.x;
+        double centerY = this.y;
+        double centerZ = this.z;
+        float radius = this.radius;
+
+        int verticalLayers = Math.max(4, Mth.ceil((radius * 2.0F) / DOT_SPACING));
+        for (int layer = 0; layer <= verticalLayers; ++layer) {
+            float progress = (float) layer / (float) verticalLayers;
+            float theta = progress * Mth.HALF_PI;
+            float sinTheta = Mth.sin(theta);
+            float cosTheta = Mth.cos(theta);
+            float ringRadius = radius * sinTheta;
+            double ringYOffset = radius * cosTheta;
+
+            spawnRing(centerX, centerY + ringYOffset, centerZ, ringRadius);
+
+            if (layer != 0 && layer != verticalLayers) {
+                spawnRing(centerX, centerY - ringYOffset, centerZ, ringRadius);
+            }
+        }
+    }
+
+    private void spawnRing(double centerX, double centerY, double centerZ, float ringRadius) {
+        if (ringRadius <= 0.05F) {
+            this.level.addParticle(VfxParticles.SHADOW_DOT.get(), centerX, centerY, centerZ, 0.0D, 0.0D, 0.0D);
+            return;
+        }
+
+        float circumference = (float) (Mth.TWO_PI * ringRadius);
+        int points = Math.max(8, Mth.ceil(circumference / DOT_SPACING));
+        for (int i = 0; i < points; ++i) {
+            float baseAngle = (float) i / (float) points * Mth.TWO_PI;
+            float jitter = (this.random.nextFloat() - 0.5F) * (Mth.TWO_PI / points) * RANDOM_OFFSET;
+            float angle = baseAngle + jitter;
+            double offsetX = ringRadius * Mth.cos(angle);
+            double offsetZ = ringRadius * Mth.sin(angle);
+            double jitterY = (this.random.nextFloat() - 0.5D) * RANDOM_OFFSET;
+            this.level.addParticle(
+                    VfxParticles.SHADOW_DOT.get(),
+                    centerX + offsetX,
+                    centerY + jitterY,
+                    centerZ + offsetZ,
+                    0.0D,
+                    0.0D,
+                    0.0D
+            );
+        }
     }
 
     public static class Provider implements ParticleProvider<ShadowDomainParticleOptions> {
-        private final SpriteSet sprite;
-
         public Provider(SpriteSet sprite) {
-            this.sprite = sprite;
         }
 
         @Override
         public Particle createParticle(ShadowDomainParticleOptions options, ClientLevel level, double x, double y, double z, double xd, double yd, double zd) {
-            return new ShadowDomainParticle(level, x, y, z, this.sprite, options);
+            return new ShadowDomainParticle(level, x, y, z, options);
         }
     }
 }
