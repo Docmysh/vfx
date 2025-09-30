@@ -121,6 +121,15 @@ repositories {
     // flatDir {
     //     dir 'libs'
     // }
+
+    maven {
+        name = "LowDragMC Snapshots"
+        url = uri("https://maven.firstdarkdev.xyz/snapshots")
+        content {
+            includeGroup "com.lowdragmc.photon"
+            includeGroup "com.lowdragmc.ldlib"
+        }
+    }
 }
 
 dependencies {
@@ -145,6 +154,9 @@ dependencies {
     // For more info:
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
+
+    implementation fg.deobf("com.lowdragmc.photon:photon-forge-${minecraft_version}:${photon_version}") { transitive = false }
+    implementation fg.deobf("com.lowdragmc.ldlib:ldlib-forge-${minecraft_version}:${ldlib_version}") { transitive = false }
 
 }
 

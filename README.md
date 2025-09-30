@@ -10,7 +10,13 @@ repositories {
 }
 ```
 
-###
+### Fabric
+
+```groovy
+dependencies {
+    modImplementation("com.lowdragmc.photon:photon-fabric-1.20.1:{latest_version}") { transitive = false }
+    modImplementation("com.lowdragmc.ldlib:ldlib-fabric-1.20.1:{latest_version}") { transitive = false }
+}
 ```
 
 ### Forge
