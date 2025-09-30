@@ -2,11 +2,11 @@ package Vfx.vfx.domain;
 
 import Vfx.vfx.Vfx;
 import Vfx.vfx.VfxParticles;
+import Vfx.vfx.particle.ShadowDomainParticleOptions;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AreaEffectCloud;
@@ -19,10 +19,8 @@ import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -135,16 +133,9 @@ public class DomainOfShadowsManager {
     }
 
     private static class ShadowDomain {
-        private static final double MIN_PARTICLE_STEP_RADIANS = Math.PI / 120.0;
-        private static final double MAX_PARTICLE_STEP_RADIANS = Math.PI / 8.0;
-        private static final double TARGET_ARC_LENGTH = 0.9;
-        private static final int PARTICLE_SPAWN_INTERVAL_TICKS = 2;
-        private static final int MAX_PARTICLE_POSITIONS = 2048;
-        private static final int PARTICLES_PER_SPAWN = 200;
-        private static final double EQUATOR_BAND_MULTIPLIER = 1.5;
-        private static final double EQUATOR_STEP_MULTIPLIER = 0.5;
-        private static final double MIN_OUTER_RING_STEP_RADIANS = Math.PI / 160.0;
-        private static final double LOOP_EPSILON = 1e-6;
+        private static final int TEXTURE_REFRESH_INTERVAL_TICKS = 20;
+        private static final int MAX_TEXTURE_LIFETIME_TICKS = TEXTURE_REFRESH_INTERVAL_TICKS * 2;
+        private static final float RADIUS_PADDING = 1.0F;
 
         private final ServerLevel level;
         private final BlockPos center;
@@ -154,8 +145,6 @@ public class DomainOfShadowsManager {
         private final int durationTicks;
         private final AABB bounds;
         private int ticksActive;
-        private final List<Vec3> particlePositions;
-        private int particlePositionCursor;
         private boolean expired;
 
         private ShadowDomain(ServerLevel level, UUID ownerId, BlockPos center, int radius, int durationTicks) {
@@ -168,12 +157,11 @@ public class DomainOfShadowsManager {
             Vec3 min = new Vec3(center.getX() - radius, Math.max(level.getMinBuildHeight(), center.getY() - radius), center.getZ() - radius);
             Vec3 max = new Vec3(center.getX() + radius + 1, Math.min(level.getMaxBuildHeight(), center.getY() + radius + 1), center.getZ() + radius + 1);
             this.bounds = new AABB(min, max);
-            this.particlePositions = buildParticlePositions();
         }
 
         private void apply() {
             spawnDarknessCloud();
-            spawnParticleDome();
+            spawnDomainTexture();
             applyDarknessEffect();
         }
 
@@ -183,8 +171,8 @@ public class DomainOfShadowsManager {
                 return true;
             }
 
-            if (ticksActive % PARTICLE_SPAWN_INTERVAL_TICKS == 0) {
-                spawnParticleDome();
+            if (ticksActive % TEXTURE_REFRESH_INTERVAL_TICKS == 0) {
+                spawnDomainTexture();
             }
 
             applyDarknessEffect();
@@ -212,87 +200,24 @@ public class DomainOfShadowsManager {
             return dx * dx + dy * dy + dz * dz <= radius * radius;
         }
 
-        private void spawnParticleDome() {
-            if (particlePositions.isEmpty()) {
+        private void spawnDomainTexture() {
+            if (expired) {
                 return;
             }
 
-            int particlesToSpawn = Math.min(PARTICLES_PER_SPAWN, particlePositions.size());
-            for (int i = 0; i < particlesToSpawn; i++) {
-                Vec3 position = particlePositions.get(particlePositionCursor);
-                level.sendParticles(VfxParticles.SHADOW_DOT.get(), position.x, position.y, position.z, 1, 0.0, 0.0, 0.0, 0.0);
-
-                particlePositionCursor++;
-                if (particlePositionCursor >= particlePositions.size()) {
-                    particlePositionCursor = 0;
-                }
-            }
+            int remainingLifetime = Math.max(durationTicks - ticksActive, 1);
+            int textureLifetime = remainingLifetime <= TEXTURE_REFRESH_INTERVAL_TICKS
+                    ? remainingLifetime
+                    : Math.min(remainingLifetime, MAX_TEXTURE_LIFETIME_TICKS);
+            float visualRadius = Math.max(radius + RADIUS_PADDING, 1.0F);
+            ShadowDomainParticleOptions options = VfxParticles.domainOptions(visualRadius, textureLifetime);
+            level.sendParticles(options, center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5, 1, 0.0, 0.0, 0.0, 0.0);
         }
 
         private void applyCooldown() {
             Player owner = level.getPlayerByUUID(ownerId);
             if (owner != null) {
                 owner.getCooldowns().addCooldown(Vfx.DOMAIN_OF_SHADOWS_RELIC.get(), durationTicks);
-            }
-        }
-
-        private List<Vec3> buildParticlePositions() {
-            List<Vec3> positions = new ArrayList<>();
-            double originX = center.getX() + 0.5;
-            double originY = center.getY() + 0.5;
-            double originZ = center.getZ() + 0.5;
-
-            int clampedRadius = Math.max(radius, 1);
-            double angularStep = TARGET_ARC_LENGTH / clampedRadius;
-            angularStep = Mth.clamp(angularStep, MIN_PARTICLE_STEP_RADIANS, MAX_PARTICLE_STEP_RADIANS);
-
-            for (double theta = 0; theta <= Math.PI + LOOP_EPSILON; theta += angularStep) {
-                double sinTheta = Math.sin(theta);
-                double cosTheta = Math.cos(theta);
-                double ringStep = angularStep;
-                if (Math.abs(theta - Math.PI / 2.0) <= angularStep * EQUATOR_BAND_MULTIPLIER) {
-                    ringStep = Math.max(MIN_OUTER_RING_STEP_RADIANS, angularStep * EQUATOR_STEP_MULTIPLIER);
-                }
-
-                for (double phi = 0; phi < Math.PI * 2 - LOOP_EPSILON; phi += ringStep) {
-                    double cosPhi = Math.cos(phi);
-                    double sinPhi = Math.sin(phi);
-                    double x = originX + clampedRadius * sinTheta * cosPhi;
-                    double y = originY + clampedRadius * cosTheta;
-                    double z = originZ + clampedRadius * sinTheta * sinPhi;
-                    positions.add(new Vec3(x, y, z));
-                }
-            }
-
-            addOuterRing(positions, originX, originY, originZ, clampedRadius, angularStep);
-            return reduceParticlePositions(positions);
-        }
-
-        private List<Vec3> reduceParticlePositions(List<Vec3> positions) {
-            int currentSize = positions.size();
-            if (currentSize <= MAX_PARTICLE_POSITIONS) {
-                return positions;
-            }
-
-            List<Vec3> reduced = new ArrayList<>(MAX_PARTICLE_POSITIONS);
-            double step = (double) currentSize / (double) MAX_PARTICLE_POSITIONS;
-            double index = 0.0;
-            for (int i = 0; i < MAX_PARTICLE_POSITIONS; i++) {
-                int selectionIndex = Math.min((int) Math.floor(index), currentSize - 1);
-                reduced.add(positions.get(selectionIndex));
-                index += step;
-            }
-            return reduced;
-        }
-
-        private void addOuterRing(List<Vec3> positions, double originX, double originY, double originZ, int clampedRadius, double baseStep) {
-            double outerStep = Math.max(MIN_OUTER_RING_STEP_RADIANS, baseStep * EQUATOR_STEP_MULTIPLIER);
-            for (double phi = 0; phi < Math.PI * 2 - LOOP_EPSILON; phi += outerStep) {
-                double cosPhi = Math.cos(phi);
-                double sinPhi = Math.sin(phi);
-                double x = originX + clampedRadius * cosPhi;
-                double z = originZ + clampedRadius * sinPhi;
-                positions.add(new Vec3(x, originY, z));
             }
         }
 

@@ -2,7 +2,7 @@ package Vfx.vfx;
 
 import com.mojang.logging.LogUtils;
 import Vfx.vfx.client.gui.ShadowSelectionScreen;
-import Vfx.vfx.client.particle.ShadowDotParticle;
+import Vfx.vfx.client.particle.ShadowDomainParticle;
 import Vfx.vfx.item.DarknessRelicItem;
 import Vfx.vfx.item.DomainOfShadowsRelicItem;
 import Vfx.vfx.item.ShadowCollectorItem;
@@ -153,7 +153,7 @@ public class Vfx {
 
         @SubscribeEvent
         public static void registerParticleProviders(RegisterParticleProvidersEvent event) {
-            event.registerSpriteSet(VfxParticles.SHADOW_DOT.get(), ShadowDotParticle.Provider::new);
+            event.registerSpriteSet(VfxParticles.SHADOW_DOMAIN.get(), ShadowDomainParticle.Provider::new);
         }
     }
 }
