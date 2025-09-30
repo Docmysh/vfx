@@ -3,6 +3,7 @@ package Vfx.vfx.menu;
 import Vfx.vfx.Vfx;
 import Vfx.vfx.item.ShadowCollectorItem;
 import Vfx.vfx.item.ShadowCollectorItem.ShadowEntry;
+import Vfx.vfx.shadow.ShadowSummonManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
@@ -28,7 +29,10 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
     private static final int MAX_ROWS = 6;
     private static final int SLOTS_PER_ROW = 9;
     private static final int SLOTS_PER_PAGE = MAX_ROWS * SLOTS_PER_ROW;
-    private static final int SLOT_BUTTON_OFFSET = 2;
+    private static final int PREVIOUS_BUTTON_ID = 0;
+    private static final int NEXT_BUTTON_ID = 1;
+    public static final int RETURN_ALL_BUTTON_ID = 2;
+    private static final int SLOT_BUTTON_OFFSET = RETURN_ALL_BUTTON_ID + 1;
     private final List<ShadowEntry> shadows;
     private final SimpleContainer container;
     private int totalPages;
@@ -155,13 +159,16 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
 
     @Override
     public boolean clickMenuButton(Player player, int id) {
-        if (id == 0) {
+        if (id == PREVIOUS_BUTTON_ID) {
             changePage(-1);
             return true;
         }
-        if (id == 1) {
+        if (id == NEXT_BUTTON_ID) {
             changePage(1);
             return true;
+        }
+        if (id == RETURN_ALL_BUTTON_ID) {
+            return handleReturnAll(player);
         }
         if (id >= SLOT_BUTTON_OFFSET && id < SLOT_BUTTON_OFFSET + SLOTS_PER_PAGE) {
             return handleSummonClick(player, id - SLOT_BUTTON_OFFSET);
@@ -193,6 +200,10 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
         return this.slots.indexOf(slot);
     }
 
+    public int getReturnAllButtonId() {
+        return RETURN_ALL_BUTTON_ID;
+    }
+
     private boolean handleSummonClick(Player player, int slotIndex) {
         if (slotIndex < 0 || slotIndex >= SLOTS_PER_PAGE) {
             return false;
@@ -217,6 +228,34 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
         }
 
         closeMenu(player);
+        return true;
+    }
+
+    private boolean handleReturnAll(Player player) {
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return true;
+        }
+
+        ItemStack collector = player.getItemInHand(hand);
+        if (!(collector.getItem() instanceof ShadowCollectorItem)) {
+            serverPlayer.displayClientMessage(Component.translatable("message.vfx.shadow_collector.failed"), true);
+            return true;
+        }
+
+        int returned = ShadowSummonManager.returnAllShadows(serverPlayer, collector);
+        if (returned > 0) {
+            Component message = returned == 1
+                    ? Component.translatable("message.vfx.shadow_collector.return_all_one")
+                    : Component.translatable("message.vfx.shadow_collector.return_all_many", returned);
+            serverPlayer.displayClientMessage(message, true);
+            this.shadows.clear();
+            this.shadows.addAll(ShadowCollectorItem.getShadowEntries(collector));
+            refreshContents();
+            this.broadcastChanges();
+        } else {
+            serverPlayer.displayClientMessage(Component.translatable("message.vfx.shadow_collector.return_all_none"), true);
+        }
+
         return true;
     }
 

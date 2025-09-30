@@ -19,6 +19,7 @@ import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Slime;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.scores.Team;
 import net.minecraftforge.event.TickEvent;
@@ -105,6 +106,52 @@ public class ShadowSummonManager {
             }
         }
         return count;
+    }
+
+    public static int returnAllShadows(ServerPlayer owner, ItemStack collector) {
+        if (!(collector.getItem() instanceof ShadowCollectorItem)) {
+            return 0;
+        }
+
+        cleanupOwner(owner.getUUID(), owner.server);
+        Set<UUID> ids = SHADOWS_BY_OWNER.get(owner.getUUID());
+        if (ids == null || ids.isEmpty()) {
+            return 0;
+        }
+
+        int returned = 0;
+        for (UUID shadowId : new HashSet<>(ids)) {
+            ShadowData data = SHADOWS.get(shadowId);
+            if (data == null) {
+                continue;
+            }
+
+            ServerLevel level = owner.server.getLevel(data.levelKey());
+            if (level == null) {
+                continue;
+            }
+
+            Entity entity = level.getEntity(shadowId);
+            if (!(entity instanceof Mob mob)) {
+                continue;
+            }
+
+            if (!mob.isAlive() || !mob.getPersistentData().getBoolean(SHADOW_TAG)) {
+                continue;
+            }
+
+            if (!isOwnedBy(mob, owner)) {
+                continue;
+            }
+
+            if (ShadowCollectorItem.storeShadow(collector, mob)) {
+                unregisterShadow(mob);
+                mob.discard();
+                returned++;
+            }
+        }
+
+        return returned;
     }
 
     public static void updateOwnerBehavior(ServerPlayer owner, ShadowCollectorItem.ShadowBehavior behavior) {

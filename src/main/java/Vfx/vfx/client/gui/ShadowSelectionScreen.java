@@ -13,6 +13,7 @@ public class ShadowSelectionScreen extends AbstractContainerScreen<ShadowSelecti
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("minecraft", "textures/gui/container/generic_54.png");
     private Button previousButton;
     private Button nextButton;
+    private Button returnAllButton;
 
     public ShadowSelectionScreen(ShadowSelectionMenu menu, Inventory inventory, Component title) {
         super(menu, inventory, title);
@@ -25,12 +26,16 @@ public class ShadowSelectionScreen extends AbstractContainerScreen<ShadowSelecti
         super.init();
         int x = (this.width - this.imageWidth) / 2;
         int y = (this.height - this.imageHeight) / 2;
+        this.returnAllButton = Button.builder(Component.translatable("screen.vfx.shadow_collector.return_all"), button -> returnAllShadows())
+                .bounds(x + 8, y - 22, 110, 20)
+                .build();
         this.previousButton = Button.builder(Component.literal("<"), button -> changePage(-1))
                 .bounds(x + this.imageWidth - 50, y - 22, 20, 20)
                 .build();
         this.nextButton = Button.builder(Component.literal(">"), button -> changePage(1))
                 .bounds(x + this.imageWidth - 25, y - 22, 20, 20)
                 .build();
+        this.addRenderableWidget(returnAllButton);
         this.addRenderableWidget(previousButton);
         this.addRenderableWidget(nextButton);
         updateButtons();
@@ -93,6 +98,9 @@ public class ShadowSelectionScreen extends AbstractContainerScreen<ShadowSelecti
         }
         int x = (this.width - this.imageWidth) / 2;
         int y = (this.height - this.imageHeight) / 2;
+        if (this.returnAllButton != null) {
+            this.returnAllButton.setPosition(x + 8, y - 22);
+        }
         if (this.previousButton != null && this.nextButton != null) {
             this.previousButton.setPosition(x + this.imageWidth - 50, y - 22);
             this.nextButton.setPosition(x + this.imageWidth - 25, y - 22);
@@ -101,6 +109,10 @@ public class ShadowSelectionScreen extends AbstractContainerScreen<ShadowSelecti
 
     private void updateButtons() {
         boolean multiple = this.menu.getTotalPages() > 1;
+        if (this.returnAllButton != null) {
+            this.returnAllButton.visible = true;
+            this.returnAllButton.active = this.minecraft != null && this.minecraft.gameMode != null;
+        }
         if (this.previousButton != null) {
             this.previousButton.visible = multiple;
             this.previousButton.active = multiple && this.menu.getPage() > 0;
@@ -118,6 +130,12 @@ public class ShadowSelectionScreen extends AbstractContainerScreen<ShadowSelecti
         this.menu.clientChangePage(delta);
         if (this.minecraft != null && this.minecraft.gameMode != null) {
             this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, delta < 0 ? 0 : 1);
+        }
+    }
+
+    private void returnAllShadows() {
+        if (this.minecraft != null && this.minecraft.gameMode != null) {
+            this.minecraft.gameMode.handleInventoryButtonClick(this.menu.containerId, this.menu.getReturnAllButtonId());
         }
     }
 }
