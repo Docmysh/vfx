@@ -135,6 +135,9 @@ public class DomainOfShadowsManager {
     private static class ShadowDomain {
         private static final int TEXTURE_REFRESH_INTERVAL_TICKS = 20;
         private static final int MAX_TEXTURE_LIFETIME_TICKS = TEXTURE_REFRESH_INTERVAL_TICKS * 2;
+        private static final int EFFECT_REFRESH_INTERVAL_TICKS = 10;
+        private static final int MIN_EFFECT_DURATION_TICKS = 80;
+        private static final int MAX_EFFECT_DURATION_TICKS = 200;
         private static final float RADIUS_PADDING = 1.0F;
 
         private final ServerLevel level;
@@ -175,7 +178,9 @@ public class DomainOfShadowsManager {
                 spawnDomainTexture();
             }
 
-            applyDarknessEffect();
+            if (ticksActive % EFFECT_REFRESH_INTERVAL_TICKS == 0) {
+                applyDarknessEffect();
+            }
             return false;
         }
 
@@ -232,7 +237,8 @@ public class DomainOfShadowsManager {
         }
 
         private void applyDarknessEffect() {
-            int effectDuration = Math.max(80, Math.min(durationTicks, 200));
+            int effectDuration = Math.max(MIN_EFFECT_DURATION_TICKS, Math.min(durationTicks, MAX_EFFECT_DURATION_TICKS));
+            effectDuration = Math.max(effectDuration, EFFECT_REFRESH_INTERVAL_TICKS * 3);
             for (ServerPlayer player : level.getEntitiesOfClass(ServerPlayer.class, bounds, p -> !p.isSpectator())) {
                 if (!containsPosition(player.blockPosition())) {
                     continue;

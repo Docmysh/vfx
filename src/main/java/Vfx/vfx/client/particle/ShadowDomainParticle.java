@@ -13,6 +13,8 @@ public class ShadowDomainParticle extends TextureSheetParticle {
     private static final float MIN_ALPHA = 0.2F;
     private static final float SIZE_PADDING = 1.5F;
 
+    private final SpriteSet sprites;
+
     private ShadowDomainParticle(ClientLevel level, double x, double y, double z, SpriteSet sprite, ShadowDomainParticleOptions options) {
         super(level, x, y, z, 0.0D, 0.0D, 0.0D);
         this.friction = 1.0F;
@@ -20,7 +22,8 @@ public class ShadowDomainParticle extends TextureSheetParticle {
         this.hasPhysics = false;
         this.lifetime = Math.max(options.lifetime(), 1);
         this.quadSize = Math.max(options.radius() * 2.0F + SIZE_PADDING, 0.5F);
-        this.setSprite(sprite.get(0, 0));
+        this.sprites = sprite;
+        this.setSpriteFromAge(this.sprites);
         this.setAlpha(BASE_ALPHA);
     }
 
@@ -32,6 +35,7 @@ public class ShadowDomainParticle extends TextureSheetParticle {
             progress = Math.min(Math.max(progress, 0.0F), 1.0F);
             float alpha = BASE_ALPHA * (1.0F - progress) + MIN_ALPHA * progress;
             this.setAlpha(alpha);
+            this.setSpriteFromAge(this.sprites);
         }
     }
 
