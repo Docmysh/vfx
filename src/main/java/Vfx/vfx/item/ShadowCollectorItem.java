@@ -2,6 +2,7 @@ package Vfx.vfx.item;
 
 import Vfx.vfx.domain.DarknessDomainManager;
 import Vfx.vfx.shadow.ShadowSummonManager;
+import Vfx.vfx.menu.ShadowSelectionMenu;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
@@ -9,6 +10,7 @@ import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -18,6 +20,7 @@ import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.player.Player;
@@ -35,9 +38,6 @@ import net.minecraftforge.registries.ForgeRegistries;
 import java.util.ArrayList;
 import java.util.List;
 
-import Vfx.vfx.menu.ShadowSelectionMenu;
-import net.minecraft.world.entity.LivingEntity;
-
 
 public class ShadowCollectorItem extends Item {
     private static final String TAG_SHADOWS = "Shadows";
@@ -46,6 +46,7 @@ public class ShadowCollectorItem extends Item {
     private static final String KEY_FAVORITE_TYPE = "EntityType";
     private static final String KEY_FAVORITE_DATA = "EntityData";
     private static final String TAG_BEHAVIOR = "ShadowBehavior";
+    private static final String DEFAULT_SHADOW_NAME_KEY = "entity.vfx.shadow";
     private static final int MAX_OUTSIDE_SHADOWS = 3;
     private static final int MAX_FAVORITE_SHADOWS = 2;
 
@@ -200,8 +201,15 @@ public class ShadowCollectorItem extends Item {
             return false;
         }
 
-        if (entity instanceof Mob mob && mob.hasCustomName()) {
-            return storeFavoriteShadow(stack, mob, typeId);
+        if (entity instanceof Mob mob) {
+            Component customName = mob.getCustomName();
+            if (customName != null) {
+                if (customName.getContents() instanceof TranslatableContents contents
+                        && DEFAULT_SHADOW_NAME_KEY.equals(contents.getKey())) {
+                    return storeStandardShadow(stack, typeId);
+                }
+                return storeFavoriteShadow(stack, mob, typeId);
+            }
         }
 
         return storeStandardShadow(stack, typeId);
