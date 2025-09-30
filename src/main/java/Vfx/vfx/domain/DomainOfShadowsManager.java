@@ -23,6 +23,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = Vfx.MODID)
 public class DomainOfShadowsManager {
@@ -38,20 +39,35 @@ public class DomainOfShadowsManager {
     }
 
     private final ServerLevel level;
-    private final List<ShadowDomain> activeDomains = new ArrayList<>();
+    private final Map<UUID, ShadowDomain> activeDomains = new HashMap<>();
 
     private DomainOfShadowsManager(ServerLevel level) {
         this.level = level;
     }
 
-    public void activateDomain(BlockPos center, int radius, int durationTicks) {
+    public void activateDomain(ServerPlayer owner, BlockPos center, int radius, int durationTicks) {
+        deactivateDomain(owner);
+
         ShadowDomain domain = new ShadowDomain(level, center, radius, durationTicks);
         domain.apply();
-        activeDomains.add(domain);
+        activeDomains.put(owner.getUUID(), domain);
+    }
+
+    public boolean deactivateDomain(ServerPlayer owner) {
+        ShadowDomain existing = activeDomains.remove(owner.getUUID());
+        if (existing != null) {
+            existing.forceExpire();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean hasActiveDomain(ServerPlayer owner) {
+        return activeDomains.containsKey(owner.getUUID());
     }
 
     public boolean isInsideDomain(BlockPos pos) {
-        for (ShadowDomain domain : activeDomains) {
+        for (ShadowDomain domain : activeDomains.values()) {
             if (domain.containsPosition(pos)) {
                 return true;
             }
@@ -68,9 +84,10 @@ public class DomainOfShadowsManager {
     }
 
     private void tick() {
-        Iterator<ShadowDomain> iterator = activeDomains.iterator();
+        Iterator<Map.Entry<UUID, ShadowDomain>> iterator = activeDomains.entrySet().iterator();
         while (iterator.hasNext()) {
-            ShadowDomain domain = iterator.next();
+            Map.Entry<UUID, ShadowDomain> entry = iterator.next();
+            ShadowDomain domain = entry.getValue();
             if (domain.tickAndCheckExpired()) {
                 iterator.remove();
             }
@@ -78,6 +95,7 @@ public class DomainOfShadowsManager {
     }
 
     private void clear() {
+        activeDomains.values().forEach(ShadowDomain::forceExpire);
         activeDomains.clear();
     }
 
@@ -123,11 +141,12 @@ public class DomainOfShadowsManager {
         private final ServerLevel level;
         private final BlockPos center;
         private final int radius;
-        private final long expiryGameTime;
+        private long expiryGameTime;
         private final int durationTicks;
         private final AABB bounds;
         private int ticksActive;
         private final List<Vec3> particlePositions;
+        private boolean expired;
 
         private ShadowDomain(ServerLevel level, BlockPos center, int radius, int durationTicks) {
             this.level = level;
@@ -149,7 +168,7 @@ public class DomainOfShadowsManager {
 
         private boolean tickAndCheckExpired() {
             ticksActive++;
-            if (level.getGameTime() >= expiryGameTime) {
+            if (expired || level.getGameTime() >= expiryGameTime) {
                 return true;
             }
 
@@ -159,6 +178,11 @@ public class DomainOfShadowsManager {
 
             applyDarknessEffect();
             return false;
+        }
+
+        private void forceExpire() {
+            expired = true;
+            expiryGameTime = level.getGameTime();
         }
 
         private boolean containsPosition(BlockPos pos) {

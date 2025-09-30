@@ -3,6 +3,7 @@ package Vfx.vfx.item;
 import Vfx.vfx.domain.DomainOfShadowsManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
@@ -21,12 +22,29 @@ public class DomainOfShadowsRelicItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
-        if (!level.isClientSide && level instanceof ServerLevel serverLevel) {
-            BlockPos center = player.blockPosition();
-            DomainOfShadowsManager.get(serverLevel).activateDomain(center, DOMAIN_RADIUS, DOMAIN_DURATION_TICKS);
+        if (level.isClientSide) {
+            return InteractionResultHolder.sidedSuccess(stack, true);
         }
 
-        player.getCooldowns().addCooldown(this, DOMAIN_DURATION_TICKS);
+        if (!(level instanceof ServerLevel serverLevel) || !(player instanceof ServerPlayer serverPlayer)) {
+            return InteractionResultHolder.pass(stack);
+        }
+
+        DomainOfShadowsManager manager = DomainOfShadowsManager.get(serverLevel);
+
+        if (manager.hasActiveDomain(serverPlayer)) {
+            manager.deactivateDomain(serverPlayer);
+            serverPlayer.getCooldowns().addCooldown(this, DOMAIN_DURATION_TICKS);
+            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
+        }
+
+        if (serverPlayer.getCooldowns().isOnCooldown(this)) {
+            return InteractionResultHolder.fail(stack);
+        }
+
+        BlockPos center = serverPlayer.blockPosition();
+        manager.activateDomain(serverPlayer, center, DOMAIN_RADIUS, DOMAIN_DURATION_TICKS);
+        serverPlayer.getCooldowns().addCooldown(this, DOMAIN_DURATION_TICKS);
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 }

@@ -20,13 +20,12 @@ import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Iterator;
+import java.util.UUID;
 
 @Mod.EventBusSubscriber(modid = Vfx.MODID)
 public class DarknessDomainManager {
@@ -42,20 +41,35 @@ public class DarknessDomainManager {
     }
 
     private final ServerLevel level;
-    private final List<DarknessDomain> activeDomains = new ArrayList<>();
+    private final Map<UUID, DarknessDomain> activeDomains = new HashMap<>();
 
     private DarknessDomainManager(ServerLevel level) {
         this.level = level;
     }
 
-    public void activateDomain(BlockPos center, int size, int durationTicks) {
+    public void activateDomain(ServerPlayer owner, BlockPos center, int size, int durationTicks) {
+        deactivateDomain(owner);
+
         DarknessDomain domain = new DarknessDomain(level, center, size, durationTicks);
         domain.apply();
-        activeDomains.add(domain);
+        activeDomains.put(owner.getUUID(), domain);
+    }
+
+    public boolean deactivateDomain(ServerPlayer owner) {
+        DarknessDomain existing = activeDomains.remove(owner.getUUID());
+        if (existing != null) {
+            existing.forceExpire();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean hasActiveDomain(ServerPlayer owner) {
+        return activeDomains.containsKey(owner.getUUID());
     }
 
     public boolean isInsideDomain(BlockPos pos) {
-        for (DarknessDomain domain : activeDomains) {
+        for (DarknessDomain domain : activeDomains.values()) {
             if (domain.containsPosition(pos)) {
                 return true;
             }
@@ -73,7 +87,7 @@ public class DarknessDomainManager {
 
 
     private boolean isDarknessBlock(BlockPos pos) {
-        for (DarknessDomain domain : activeDomains) {
+        for (DarknessDomain domain : activeDomains.values()) {
             if (domain.contains(pos)) {
                 return true;
             }
@@ -82,9 +96,10 @@ public class DarknessDomainManager {
     }
 
     private void tick() {
-        Iterator<DarknessDomain> iterator = activeDomains.iterator();
+        Iterator<Map.Entry<UUID, DarknessDomain>> iterator = activeDomains.entrySet().iterator();
         while (iterator.hasNext()) {
-            DarknessDomain domain = iterator.next();
+            Map.Entry<UUID, DarknessDomain> entry = iterator.next();
+            DarknessDomain domain = entry.getValue();
             if (domain.tickAndCheckExpired()) {
                 domain.revert();
                 iterator.remove();
@@ -93,9 +108,7 @@ public class DarknessDomainManager {
     }
 
     private void revertAll() {
-        for (DarknessDomain domain : activeDomains) {
-            domain.revert();
-        }
+        activeDomains.values().forEach(DarknessDomain::revert);
         activeDomains.clear();
     }
 
@@ -147,7 +160,7 @@ public class DarknessDomainManager {
     private static class DarknessDomain {
         private final ServerLevel level;
         private final Map<BlockPos, BlockState> originalBlocks = new HashMap<>();
-        private final long expiryGameTime;
+        private long expiryGameTime;
         private final BlockPos center;
         private final int durationTicks;
         private final int half;
@@ -158,6 +171,7 @@ public class DarknessDomainManager {
         private final int minZ;
         private final int maxZ;
         private final AABB bounds;
+        private boolean expired;
 
         private DarknessDomain(ServerLevel level, BlockPos center, int size, int durationTicks) {
             this.level = level;
@@ -219,7 +233,7 @@ public class DarknessDomainManager {
         }
 
         private boolean tickAndCheckExpired() {
-            if (level.getGameTime() >= expiryGameTime) {
+            if (expired || level.getGameTime() >= expiryGameTime) {
                 return true;
             }
             applyDarknessEffect();
@@ -260,6 +274,15 @@ public class DarknessDomainManager {
 
             originalBlocks.forEach((pos, state) -> level.setBlock(pos, state, 3));
             originalBlocks.clear();
+        }
+
+        private void forceExpire() {
+            if (expired) {
+                return;
+            }
+            expired = true;
+            revert();
+            expiryGameTime = level.getGameTime();
         }
     }
 }
