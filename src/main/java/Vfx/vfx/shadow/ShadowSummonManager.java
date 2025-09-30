@@ -378,7 +378,7 @@ public class ShadowSummonManager {
         AttributeInstance attack = mob.getAttribute(Attributes.ATTACK_DAMAGE);
         if (attack == null) {
             try {
-                mob.getAttributes().createInstanceIfAbsent(Attributes.ATTACK_DAMAGE);
+                mob.getAttributes().registerAttribute(Attributes.ATTACK_DAMAGE);
             } catch (IllegalArgumentException ignored) {
                 return;
             }
