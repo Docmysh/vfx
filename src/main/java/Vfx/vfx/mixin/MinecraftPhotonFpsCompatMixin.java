@@ -31,7 +31,7 @@ public abstract class MinecraftPhotonFpsCompatMixin {
     }
 
     @Inject(method = "<init>", at = @At("TAIL"), require = 0)
-    private void vfx$initPhotonCompat(Minecraft.GameConfig config, CallbackInfo ci) {
+    private void vfx$initPhotonCompat(Minecraft.RunArgs config, CallbackInfo ci) {
         vfx$syncPhotonFpsField();
     }
 
