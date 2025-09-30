@@ -111,10 +111,14 @@ public class DomainOfShadowsManager {
     }
 
     private static class ShadowDomain {
-        private static final double MIN_PARTICLE_STEP_RADIANS = Math.PI / 80.0;
+        private static final double MIN_PARTICLE_STEP_RADIANS = Math.PI / 120.0;
         private static final double MAX_PARTICLE_STEP_RADIANS = Math.PI / 8.0;
         private static final double TARGET_ARC_LENGTH = 0.9;
         private static final int PARTICLE_SPAWN_INTERVAL_TICKS = 2;
+        private static final double EQUATOR_BAND_MULTIPLIER = 1.5;
+        private static final double EQUATOR_STEP_MULTIPLIER = 0.5;
+        private static final double MIN_OUTER_RING_STEP_RADIANS = Math.PI / 160.0;
+        private static final double LOOP_EPSILON = 1e-6;
 
         private final ServerLevel level;
         private final BlockPos center;
@@ -123,6 +127,7 @@ public class DomainOfShadowsManager {
         private final int durationTicks;
         private final AABB bounds;
         private int ticksActive;
+        private final List<Vec3> particlePositions;
 
         private ShadowDomain(ServerLevel level, BlockPos center, int radius, int durationTicks) {
             this.level = level;
@@ -133,6 +138,7 @@ public class DomainOfShadowsManager {
             Vec3 min = new Vec3(center.getX() - radius, Math.max(level.getMinBuildHeight(), center.getY() - radius), center.getZ() - radius);
             Vec3 max = new Vec3(center.getX() + radius + 1, Math.min(level.getMaxBuildHeight(), center.getY() + radius + 1), center.getZ() + radius + 1);
             this.bounds = new AABB(min, max);
+            this.particlePositions = buildParticlePositions();
         }
 
         private void apply() {
@@ -163,6 +169,13 @@ public class DomainOfShadowsManager {
         }
 
         private void spawnParticleDome() {
+            for (Vec3 position : particlePositions) {
+                level.sendParticles(ParticleTypes.SMOKE, position.x, position.y, position.z, 1, 0.0, 0.0, 0.0, 0.0);
+            }
+        }
+
+        private List<Vec3> buildParticlePositions() {
+            List<Vec3> positions = new ArrayList<>();
             double originX = center.getX() + 0.5;
             double originY = center.getY() + 0.5;
             double originZ = center.getZ() + 0.5;
@@ -171,17 +184,36 @@ public class DomainOfShadowsManager {
             double angularStep = TARGET_ARC_LENGTH / clampedRadius;
             angularStep = Mth.clamp(angularStep, MIN_PARTICLE_STEP_RADIANS, MAX_PARTICLE_STEP_RADIANS);
 
-            for (double theta = 0; theta <= Math.PI; theta += angularStep) {
+            for (double theta = 0; theta <= Math.PI + LOOP_EPSILON; theta += angularStep) {
                 double sinTheta = Math.sin(theta);
                 double cosTheta = Math.cos(theta);
-                for (double phi = 0; phi < Math.PI * 2; phi += angularStep) {
+                double ringStep = angularStep;
+                if (Math.abs(theta - Math.PI / 2.0) <= angularStep * EQUATOR_BAND_MULTIPLIER) {
+                    ringStep = Math.max(MIN_OUTER_RING_STEP_RADIANS, angularStep * EQUATOR_STEP_MULTIPLIER);
+                }
+
+                for (double phi = 0; phi < Math.PI * 2 - LOOP_EPSILON; phi += ringStep) {
                     double cosPhi = Math.cos(phi);
                     double sinPhi = Math.sin(phi);
                     double x = originX + clampedRadius * sinTheta * cosPhi;
                     double y = originY + clampedRadius * cosTheta;
                     double z = originZ + clampedRadius * sinTheta * sinPhi;
-                    level.sendParticles(ParticleTypes.SMOKE, x, y, z, 2, 0.15, 0.15, 0.15, 0.0);
+                    positions.add(new Vec3(x, y, z));
                 }
+            }
+
+            addOuterRing(positions, originX, originY, originZ, clampedRadius, angularStep);
+            return positions;
+        }
+
+        private void addOuterRing(List<Vec3> positions, double originX, double originY, double originZ, int clampedRadius, double baseStep) {
+            double outerStep = Math.max(MIN_OUTER_RING_STEP_RADIANS, baseStep * EQUATOR_STEP_MULTIPLIER);
+            for (double phi = 0; phi < Math.PI * 2 - LOOP_EPSILON; phi += outerStep) {
+                double cosPhi = Math.cos(phi);
+                double sinPhi = Math.sin(phi);
+                double x = originX + clampedRadius * cosPhi;
+                double z = originZ + clampedRadius * sinPhi;
+                positions.add(new Vec3(x, originY, z));
             }
         }
 
