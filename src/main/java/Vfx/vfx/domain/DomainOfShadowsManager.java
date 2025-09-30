@@ -139,6 +139,8 @@ public class DomainOfShadowsManager {
         private static final double MAX_PARTICLE_STEP_RADIANS = Math.PI / 8.0;
         private static final double TARGET_ARC_LENGTH = 0.9;
         private static final int PARTICLE_SPAWN_INTERVAL_TICKS = 2;
+        private static final int MAX_PARTICLE_POSITIONS = 2048;
+        private static final int PARTICLES_PER_SPAWN = 200;
         private static final double EQUATOR_BAND_MULTIPLIER = 1.5;
         private static final double EQUATOR_STEP_MULTIPLIER = 0.5;
         private static final double MIN_OUTER_RING_STEP_RADIANS = Math.PI / 160.0;
@@ -153,6 +155,7 @@ public class DomainOfShadowsManager {
         private final AABB bounds;
         private int ticksActive;
         private final List<Vec3> particlePositions;
+        private int particlePositionCursor;
         private boolean expired;
 
         private ShadowDomain(ServerLevel level, UUID ownerId, BlockPos center, int radius, int durationTicks) {
@@ -210,8 +213,19 @@ public class DomainOfShadowsManager {
         }
 
         private void spawnParticleDome() {
-            for (Vec3 position : particlePositions) {
+            if (particlePositions.isEmpty()) {
+                return;
+            }
+
+            int particlesToSpawn = Math.min(PARTICLES_PER_SPAWN, particlePositions.size());
+            for (int i = 0; i < particlesToSpawn; i++) {
+                Vec3 position = particlePositions.get(particlePositionCursor);
                 level.sendParticles(VfxParticles.SHADOW_DOT.get(), position.x, position.y, position.z, 1, 0.0, 0.0, 0.0, 0.0);
+
+                particlePositionCursor++;
+                if (particlePositionCursor >= particlePositions.size()) {
+                    particlePositionCursor = 0;
+                }
             }
         }
 
@@ -251,7 +265,24 @@ public class DomainOfShadowsManager {
             }
 
             addOuterRing(positions, originX, originY, originZ, clampedRadius, angularStep);
-            return positions;
+            return reduceParticlePositions(positions);
+        }
+
+        private List<Vec3> reduceParticlePositions(List<Vec3> positions) {
+            int currentSize = positions.size();
+            if (currentSize <= MAX_PARTICLE_POSITIONS) {
+                return positions;
+            }
+
+            List<Vec3> reduced = new ArrayList<>(MAX_PARTICLE_POSITIONS);
+            double step = (double) currentSize / (double) MAX_PARTICLE_POSITIONS;
+            double index = 0.0;
+            for (int i = 0; i < MAX_PARTICLE_POSITIONS; i++) {
+                int selectionIndex = Math.min((int) Math.floor(index), currentSize - 1);
+                reduced.add(positions.get(selectionIndex));
+                index += step;
+            }
+            return reduced;
         }
 
         private void addOuterRing(List<Vec3> positions, double originX, double originY, double originZ, int clampedRadius, double baseStep) {
