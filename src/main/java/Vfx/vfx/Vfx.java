@@ -1,15 +1,16 @@
 package Vfx.vfx;
 
 import com.mojang.logging.LogUtils;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.MenuScreens;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.world.food.FoodProperties;
 import Vfx.vfx.client.gui.ShadowSelectionScreen;
+import Vfx.vfx.client.particle.ShadowDotParticle;
 import Vfx.vfx.item.DarknessRelicItem;
 import Vfx.vfx.item.DomainOfShadowsRelicItem;
 import Vfx.vfx.item.ShadowCollectorItem;
 import Vfx.vfx.item.UmbralLensItem;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.food.FoodProperties;
 import Vfx.vfx.menu.ShadowSelectionMenu;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
@@ -30,6 +31,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -91,6 +93,7 @@ public class Vfx {
         // Register the Deferred Register to the mod event bus so tabs get registered
         CREATIVE_MODE_TABS.register(modEventBus);
         MENUS.register(modEventBus);
+        VfxParticles.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
@@ -147,5 +150,11 @@ public class Vfx {
 
             MenuScreens.register(Vfx.SHADOW_SELECTION_MENU.get(), ShadowSelectionScreen::new);
         }
+
+        @SubscribeEvent
+        public static void registerParticleProviders(RegisterParticleProvidersEvent event) {
+            event.registerSpriteSet(VfxParticles.SHADOW_DOT.get(), ShadowDotParticle.Provider::new);
+        }
     }
 }
+

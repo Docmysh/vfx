@@ -1,8 +1,8 @@
 package Vfx.vfx.domain;
 
 import Vfx.vfx.Vfx;
+import Vfx.vfx.VfxParticles;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -211,7 +211,7 @@ public class DomainOfShadowsManager {
 
         private void spawnParticleDome() {
             for (Vec3 position : particlePositions) {
-                level.sendParticles(ParticleTypes.SMOKE, position.x, position.y, position.z, 1, 0.0, 0.0, 0.0, 0.0);
+                level.sendParticles(VfxParticles.SHADOW_DOT.get(), true, position.x, position.y, position.z, 1, 0.0, 0.0, 0.0, 0.0);
             }
         }
 
