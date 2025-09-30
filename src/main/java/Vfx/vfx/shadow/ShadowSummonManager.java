@@ -2,7 +2,6 @@ package Vfx.vfx.shadow;
 
 import Vfx.vfx.Vfx;
 import Vfx.vfx.item.ShadowCollectorItem;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -11,7 +10,6 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
-import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
@@ -379,10 +377,10 @@ public class ShadowSummonManager {
     private static void ensureAttackAttribute(Mob mob) {
         AttributeInstance attack = mob.getAttribute(Attributes.ATTACK_DAMAGE);
         if (attack == null) {
-            AttributeSupplier.Builder builder = AttributeSupplier.builder();
-            builder.add(BuiltInRegistries.ATTRIBUTE.wrapAsHolder(Attributes.ATTACK_DAMAGE), 2.0D);
-            mob.getAttributes().addTransientAttributeModifiers(builder.build());
-            attack = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+            attack = mob.getAttributes().registerAttribute(Attributes.ATTACK_DAMAGE);
+            if (attack != null) {
+                attack.setBaseValue(2.0D);
+            }
         }
         if (attack == null) {
             return;
