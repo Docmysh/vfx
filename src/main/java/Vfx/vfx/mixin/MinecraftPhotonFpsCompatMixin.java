@@ -18,13 +18,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class MinecraftPhotonFpsCompatMixin {
 
     @Shadow
-    private int fps;
+    private volatile int fps;
 
     /**
      * Backwards-compatibility mirror for Photon. The name intentionally matches
      * the legacy SRG identifier Photon requests via an accessor mixin.
      */
-    private int f_91021_;
+    private volatile int f_91021_;
 
     @Unique
     private void vfx$syncPhotonFpsField() {
