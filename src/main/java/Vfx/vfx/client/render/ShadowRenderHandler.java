@@ -36,7 +36,8 @@ public class ShadowRenderHandler {
 
         LivingEntityRenderer<?, ?> renderer = event.getRenderer();
         EntityModel<?> model = renderer.getModel();
-        ResourceLocation texture = renderer.getTextureLocation(entity);
+        @SuppressWarnings("unchecked")
+        ResourceLocation texture = ((LivingEntityRenderer<LivingEntity, ?>) renderer).getTextureLocation(entity);
         PoseStack poseStack = event.getPoseStack();
         MultiBufferSource buffer = event.getMultiBufferSource();
 

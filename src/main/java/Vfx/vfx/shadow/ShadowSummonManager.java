@@ -13,7 +13,9 @@ import net.minecraft.world.entity.ai.attributes.AttributeInstance;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
+import net.minecraft.world.entity.ai.goal.WrappedGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.monster.Monster;
 import net.minecraft.world.entity.monster.Slime;
 import net.minecraft.world.level.Level;
@@ -326,20 +328,23 @@ public class ShadowSummonManager {
         if (mob instanceof Monster) {
             return;
         }
+        if (!(mob instanceof PathfinderMob pathfinderMob)) {
+            return;
+        }
         if (!hasGoalOfType(mob.targetSelector, HurtByTargetGoal.class)) {
-            mob.targetSelector.addGoal(1, new HurtByTargetGoal(mob).setAlertOthers());
+            mob.targetSelector.addGoal(1, new HurtByTargetGoal(pathfinderMob).setAlertOthers());
         }
         if (mob instanceof Slime) {
             return;
         }
 
         if (!hasGoalOfType(mob.goalSelector, MeleeAttackGoal.class)) {
-            mob.goalSelector.addGoal(2, new MeleeAttackGoal(mob, 1.2D, true));
+            mob.goalSelector.addGoal(2, new MeleeAttackGoal(pathfinderMob, 1.2D, true));
         }
     }
 
     private static boolean hasGoalOfType(GoalSelector selector, Class<?> goalClass) {
-        for (GoalSelector.WrappedGoal wrappedGoal : selector.getAvailableGoals()) {
+        for (WrappedGoal wrappedGoal : selector.getAvailableGoals()) {
             if (goalClass.isInstance(wrappedGoal.getGoal())) {
                 return true;
             }
