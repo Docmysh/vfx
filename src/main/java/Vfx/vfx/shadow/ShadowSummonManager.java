@@ -278,7 +278,11 @@ public class ShadowSummonManager {
 
     private static Monster findNearestMonster(Mob mob, ServerPlayer owner, double range) {
         AABB area = mob.getBoundingBox().inflate(range);
-        List<Monster> monsters = mob.level().getEntitiesOfClass(Monster.class, area, candidate -> candidate.isAlive() && !candidate.isAlliedTo(owner));
+        List<Monster> monsters = mob.level().getEntitiesOfClass(Monster.class, area, candidate ->
+                candidate.isAlive()
+                        && candidate != mob
+                        && !ShadowSummonManager.isShadowEntity(candidate)
+                        && !candidate.isAlliedTo(owner));
         return monsters.stream()
                 .min(Comparator.comparingDouble(entity -> entity.distanceToSqr(owner)))
                 .orElse(null);
@@ -286,7 +290,8 @@ public class ShadowSummonManager {
 
     private static LivingEntity findHostileTarget(Mob mob, ServerPlayer owner, double range) {
         AABB area = mob.getBoundingBox().inflate(range);
-        List<LivingEntity> candidates = mob.level().getEntitiesOfClass(LivingEntity.class, area, entity -> isValidHostileTarget(entity, owner));
+        List<LivingEntity> candidates = mob.level().getEntitiesOfClass(LivingEntity.class, area,
+                entity -> entity != mob && isValidHostileTarget(entity, owner));
         return candidates.stream()
                 .min(Comparator.comparingDouble(entity -> entity.distanceToSqr(mob)))
                 .orElse(null);
@@ -299,7 +304,7 @@ public class ShadowSummonManager {
         if (target.getUUID().equals(owner.getUUID())) {
             return false;
         }
-        if (target instanceof Mob mob && mob.getPersistentData().getBoolean(SHADOW_TAG)) {
+        if (target instanceof Mob shadowMob && shadowMob.getPersistentData().getBoolean(SHADOW_TAG)) {
             return false;
         }
         return !owner.isAlliedTo(target);

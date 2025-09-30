@@ -136,9 +136,9 @@ public class ShadowCollectorItem extends Item {
 
         NetworkHooks.openScreen(serverPlayer,
                 new SimpleMenuProvider((id, inventory, playerEntity) ->
-                        new ShadowSelectionMenu(id, inventory, stack, new ArrayList<>(stored)),
+                        new ShadowSelectionMenu(id, inventory, new ArrayList<>(stored), hand),
                         Component.translatable("screen.vfx.shadow_collector")),
-                buf -> ShadowSelectionMenu.writeShadows(buf, stored));
+                buf -> ShadowSelectionMenu.writeData(buf, stored, hand));
 
         return InteractionResultHolder.success(stack);
     }

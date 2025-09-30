@@ -3,6 +3,7 @@ package Vfx.vfx.menu;
 import Vfx.vfx.Vfx;
 import Vfx.vfx.item.ShadowCollectorItem;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -26,23 +27,23 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
     private static final int MAX_ROWS = 6;
     private static final int SLOTS_PER_ROW = 9;
     private static final int SLOTS_PER_PAGE = MAX_ROWS * SLOTS_PER_ROW;
-    private final ItemStack collectorStack;
     private final List<ResourceLocation> shadows;
     private final SimpleContainer container;
     private final int totalPages;
     private int page = 0;
     private int visibleRows = 1;
+    private final InteractionHand hand;
 
     public ShadowSelectionMenu(int id, Inventory inventory, FriendlyByteBuf buffer) {
-        this(id, inventory, ItemStack.EMPTY, readShadows(buffer));
+        this(id, inventory, readShadows(buffer), buffer.readEnum(InteractionHand.class));
     }
 
-    public ShadowSelectionMenu(int id, Inventory inventory, ItemStack stack, List<ResourceLocation> shadows) {
+    public ShadowSelectionMenu(int id, Inventory inventory, List<ResourceLocation> shadows, InteractionHand hand) {
         super(Vfx.SHADOW_SELECTION_MENU.get(), id);
-        this.collectorStack = stack;
         this.shadows = new ArrayList<>(shadows);
         this.totalPages = Math.max(1, (int) Math.ceil((double) this.shadows.size() / SLOTS_PER_PAGE));
         this.container = new SimpleContainer(SLOTS_PER_PAGE);
+        this.hand = hand;
 
         for (int row = 0; row < MAX_ROWS; row++) {
             for (int column = 0; column < SLOTS_PER_ROW; column++) {
@@ -64,7 +65,12 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
         updateDisplayedStacks();
     }
 
-    public static void writeShadows(FriendlyByteBuf buffer, List<ResourceLocation> shadows) {
+    public static void writeData(FriendlyByteBuf buffer, List<ResourceLocation> shadows, InteractionHand hand) {
+        writeShadows(buffer, shadows);
+        buffer.writeEnum(hand);
+    }
+
+    private static void writeShadows(FriendlyByteBuf buffer, List<ResourceLocation> shadows) {
         buffer.writeVarInt(shadows.size());
         for (ResourceLocation id : shadows) {
             buffer.writeResourceLocation(id);
@@ -105,8 +111,14 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
             if (globalIndex < shadows.size()) {
                 ResourceLocation typeId = shadows.get(globalIndex);
                 if (!player.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
-                    if (ShadowCollectorItem.summonShadow(serverPlayer, typeId, ShadowCollectorItem.getBehavior(collectorStack)) && !collectorStack.isEmpty()) {
-                        ShadowCollectorItem.consumeShadow(collectorStack, typeId);
+                    ItemStack collector = player.getItemInHand(hand);
+                    if (collector.getItem() instanceof ShadowCollectorItem) {
+                        ShadowCollectorItem.ShadowBehavior behavior = ShadowCollectorItem.getBehavior(collector);
+                        if (ShadowCollectorItem.summonShadow(serverPlayer, typeId, behavior) && !collector.isEmpty()) {
+                            ShadowCollectorItem.consumeShadow(collector, typeId);
+                            shadows.remove(globalIndex);
+                            updateDisplayedStacks();
+                        }
                     }
                 }
             }

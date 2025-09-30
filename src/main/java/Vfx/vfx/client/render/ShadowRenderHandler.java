@@ -25,6 +25,7 @@ public class ShadowRenderHandler {
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
+        RenderSystem.setShaderColor(0.1F, 0.1F, 0.1F, 1.0F);
     }
 
     @SubscribeEvent
@@ -47,13 +48,14 @@ public class ShadowRenderHandler {
                 buffer.getBuffer(RenderType.entityTranslucent(texture)),
                 event.getPackedLight(),
                 LivingEntityRenderer.getOverlayCoords(entity, 0.0F),
-                0.05F,
-                0.05F,
-                0.05F,
-                0.65F
+                0.0F,
+                0.0F,
+                0.0F,
+                0.75F
         );
         poseStack.popPose();
 
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.disableBlend();
     }
 }
