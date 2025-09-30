@@ -39,7 +39,7 @@ public class ShadowSummonManager {
         mob.getPersistentData().putBoolean(SHADOW_TAG, true);
         mob.getPersistentData().putString(BEHAVIOR_TAG, behavior.name());
         mob.getPersistentData().putUUID(OWNER_TAG, owner.getUUID());
-        mob.setPersistenceRequired(true);
+        mob.setPersistenceRequired();
         mob.setNoAi(false);
 
         ShadowData data = new ShadowData(mob.level().dimension(), owner.getUUID());
@@ -166,7 +166,7 @@ public class ShadowSummonManager {
     }
 
     private static void updateShadow(Mob mob, ServerPlayer owner, ShadowCollectorItem.ShadowBehavior behavior) {
-        mob.setPersistenceRequired(true);
+        mob.setPersistenceRequired();
         mob.setNoAi(false);
         LivingEntity currentTarget = mob.getTarget();
         if (currentTarget != null && !isValidTarget(currentTarget, owner)) {
