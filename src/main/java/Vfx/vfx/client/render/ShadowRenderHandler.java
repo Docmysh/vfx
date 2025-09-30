@@ -4,8 +4,10 @@ import Vfx.vfx.Vfx;
 import Vfx.vfx.shadow.ShadowSummonManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.EntityModel;
 import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.OutlineBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.entity.LivingEntityRenderer;
 import net.minecraft.resources.ResourceLocation;
@@ -25,7 +27,7 @@ public class ShadowRenderHandler {
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
-        RenderSystem.setShaderColor(0.1F, 0.1F, 0.1F, 1.0F);
+        RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 0.35F);
     }
 
     @SubscribeEvent
@@ -51,9 +53,25 @@ public class ShadowRenderHandler {
                 0.0F,
                 0.0F,
                 0.0F,
-                0.75F
+                0.35F
         );
         poseStack.popPose();
+
+        poseStack.pushPose();
+        OutlineBufferSource outlineBuffer = Minecraft.getInstance().renderBuffers().outlineBufferSource();
+        outlineBuffer.setColor(16, 16, 16, 255);
+        model.renderToBuffer(
+                poseStack,
+                outlineBuffer.getBuffer(RenderType.outline(texture)),
+                event.getPackedLight(),
+                LivingEntityRenderer.getOverlayCoords(entity, 0.0F),
+                0.0F,
+                0.0F,
+                0.0F,
+                1.0F
+        );
+        poseStack.popPose();
+        outlineBuffer.endOutlineBatch();
 
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
         RenderSystem.disableBlend();
