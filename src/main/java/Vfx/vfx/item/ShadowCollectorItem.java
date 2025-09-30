@@ -16,6 +16,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.MobSpawnType;
 import net.minecraft.world.entity.player.Player;
@@ -25,6 +26,7 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
+import net.minecraft.world.scores.Team;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraftforge.network.NetworkHooks;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -289,6 +291,14 @@ public class ShadowCollectorItem extends Item {
     private static void applyShadowAppearance(Mob mob) {
         mob.setCustomName(Component.translatable("entity.vfx.shadow", mob.getType().getDescription()).withStyle(ChatFormatting.DARK_GRAY));
         mob.setCustomNameVisible(true);
+        mob.setSilent(true);
+
+        for (EquipmentSlot slot : EquipmentSlot.values()) {
+            mob.setDropChance(slot, 0.0F);
+            if (!mob.getItemBySlot(slot).isEmpty()) {
+                mob.setItemSlot(slot, ItemStack.EMPTY);
+            }
+        }
 
         Level level = mob.level();
         if (level instanceof ServerLevel serverLevel) {
@@ -299,6 +309,8 @@ public class ShadowCollectorItem extends Item {
                 team.setColor(ChatFormatting.BLACK);
                 team.setAllowFriendlyFire(false);
                 team.setSeeFriendlyInvisibles(true);
+                team.setCollisionRule(Team.CollisionRule.NEVER);
+                team.setDeathMessageVisibility(Team.Visibility.NEVER);
             }
             scoreboard.addPlayerToTeam(mob.getStringUUID(), team);
         }
