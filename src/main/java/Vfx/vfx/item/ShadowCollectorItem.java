@@ -13,6 +13,7 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -32,10 +33,7 @@ import net.minecraftforge.network.NetworkHooks;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
-import java.util.Set;
 
 import Vfx.vfx.menu.ShadowSelectionMenu;
 import net.minecraft.world.entity.LivingEntity;
@@ -43,8 +41,16 @@ import net.minecraft.world.entity.LivingEntity;
 
 public class ShadowCollectorItem extends Item {
     private static final String TAG_SHADOWS = "Shadows";
+    private static final String TAG_FAVORITE_SHADOWS = "FavoriteShadows";
+    private static final String KEY_FAVORITE_NAME = "Name";
+    private static final String KEY_FAVORITE_TYPE = "EntityType";
+    private static final String KEY_FAVORITE_DATA = "EntityData";
     private static final String TAG_BEHAVIOR = "ShadowBehavior";
     private static final int MAX_OUTSIDE_SHADOWS = 3;
+    private static final int MAX_FAVORITE_SHADOWS = 2;
+
+    public record ShadowEntry(ResourceLocation typeId, boolean favorite, int index, String name) {
+    }
 
     public enum ShadowBehavior {
         PASSIVE("behavior.vfx.shadow.passive"),
@@ -121,25 +127,28 @@ public class ShadowCollectorItem extends Item {
             return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
         }
 
-        List<ResourceLocation> stored = getStoredShadows(stack);
-        if (stored.isEmpty()) {
+        List<ShadowEntry> entries = getShadowEntries(stack);
+        if (entries.isEmpty()) {
             serverPlayer.displayClientMessage(Component.translatable("message.vfx.shadow_collector.empty"), true);
             return InteractionResultHolder.success(stack);
         }
 
+        ShadowBehavior behavior = getBehavior(stack);
+        List<ResourceLocation> stored = getStoredShadows(stack);
         ServerLevel serverLevel = serverPlayer.serverLevel();
         DarknessDomainManager manager = DarknessDomainManager.get(serverLevel);
         BlockPos pos = serverPlayer.blockPosition();
-        if (manager.isInsideDomain(pos)) {
-            summonAllShadows(serverPlayer, stack, stored);
-            return InteractionResultHolder.success(stack);
+        if (manager.isInsideDomain(pos) && !stored.isEmpty()) {
+            if (summonAllShadows(serverPlayer, stack, behavior)) {
+                return InteractionResultHolder.success(stack);
+            }
         }
 
         NetworkHooks.openScreen(serverPlayer,
                 new SimpleMenuProvider((id, inventory, playerEntity) ->
-                        new ShadowSelectionMenu(id, inventory, new ArrayList<>(stored), hand),
+                        new ShadowSelectionMenu(id, inventory, new ArrayList<>(entries), hand),
                         Component.translatable("screen.vfx.shadow_collector")),
-                buf -> ShadowSelectionMenu.writeData(buf, stored, hand));
+                buf -> ShadowSelectionMenu.writeData(buf, entries, hand));
 
         return InteractionResultHolder.success(stack);
     }
@@ -150,6 +159,32 @@ public class ShadowCollectorItem extends Item {
                 .withStyle(ChatFormatting.GRAY));
         tooltip.add(Component.translatable("tooltip.vfx.shadow_collector.behavior", getBehavior(stack).getDisplayName())
                 .withStyle(ChatFormatting.DARK_GRAY));
+    }
+
+    @Override
+    public InteractionResult interactLivingEntity(ItemStack stack, Player player, LivingEntity target, InteractionHand hand) {
+        if (!(target instanceof Mob mob)) {
+            return InteractionResult.PASS;
+        }
+        if (player.level().isClientSide) {
+            return InteractionResult.SUCCESS;
+        }
+        if (!(player instanceof ServerPlayer serverPlayer)) {
+            return InteractionResult.PASS;
+        }
+        if (!ShadowSummonManager.isShadowEntity(mob) || !ShadowSummonManager.isOwnedBy(mob, serverPlayer)) {
+            return InteractionResult.PASS;
+        }
+
+        if (storeShadow(stack, mob)) {
+            ShadowSummonManager.unregisterShadow(mob);
+            mob.discard();
+            serverPlayer.displayClientMessage(Component.translatable("message.vfx.shadow_collector.captured", mob.getDisplayName()), true);
+            return InteractionResult.CONSUME;
+        }
+
+        serverPlayer.displayClientMessage(Component.translatable("message.vfx.shadow_collector.failed"), true);
+        return InteractionResult.CONSUME;
     }
 
     public static boolean storeShadow(ItemStack stack, Entity entity) {
@@ -165,16 +200,63 @@ public class ShadowCollectorItem extends Item {
             return false;
         }
 
+        if (entity instanceof Mob mob && mob.hasCustomName()) {
+            return storeFavoriteShadow(stack, mob, typeId);
+        }
+
+        return storeStandardShadow(stack, typeId);
+    }
+
+    private static boolean storeStandardShadow(ItemStack stack, ResourceLocation typeId) {
         CompoundTag tag = stack.getOrCreateTag();
         ListTag listTag = tag.getList(TAG_SHADOWS, Tag.TAG_STRING);
-        for (Tag element : listTag) {
-            if (element instanceof StringTag stringTag && Objects.equals(stringTag.getAsString(), typeId.toString())) {
-                return false;
+        listTag.add(StringTag.valueOf(typeId.toString()));
+        tag.put(TAG_SHADOWS, listTag);
+        return true;
+    }
+
+    private static boolean storeFavoriteShadow(ItemStack stack, Mob mob, ResourceLocation typeId) {
+        Component customName = mob.getCustomName();
+        if (customName == null) {
+            return false;
+        }
+
+        String name = customName.getString().trim();
+        if (name.isEmpty()) {
+            return false;
+        }
+
+        CompoundTag tag = stack.getOrCreateTag();
+        ListTag favorites = tag.getList(TAG_FAVORITE_SHADOWS, Tag.TAG_COMPOUND);
+
+        int existingIndex = -1;
+        for (int i = 0; i < favorites.size(); i++) {
+            CompoundTag favoriteTag = favorites.getCompound(i);
+            if (name.equals(favoriteTag.getString(KEY_FAVORITE_NAME))) {
+                existingIndex = i;
+                break;
             }
         }
 
-        listTag.add(StringTag.valueOf(typeId.toString()));
-        tag.put(TAG_SHADOWS, listTag);
+        if (existingIndex == -1 && favorites.size() >= MAX_FAVORITE_SHADOWS) {
+            return false;
+        }
+
+        CompoundTag entityData = new CompoundTag();
+        mob.saveWithoutId(entityData);
+
+        CompoundTag favoriteTag = new CompoundTag();
+        favoriteTag.putString(KEY_FAVORITE_NAME, name);
+        favoriteTag.putString(KEY_FAVORITE_TYPE, typeId.toString());
+        favoriteTag.put(KEY_FAVORITE_DATA, entityData);
+
+        if (existingIndex >= 0) {
+            favorites.set(existingIndex, favoriteTag);
+        } else {
+            favorites.add(favoriteTag);
+        }
+
+        tag.put(TAG_FAVORITE_SHADOWS, favorites);
         return true;
     }
 
@@ -186,7 +268,8 @@ public class ShadowCollectorItem extends Item {
         }
 
         ListTag listTag = tag.getList(TAG_SHADOWS, Tag.TAG_STRING);
-        for (Tag element : listTag) {
+        for (int i = 0; i < listTag.size(); i++) {
+            Tag element = listTag.get(i);
             if (element instanceof StringTag stringTag) {
                 ResourceLocation id = ResourceLocation.tryParse(stringTag.getAsString());
                 if (id != null) {
@@ -197,41 +280,134 @@ public class ShadowCollectorItem extends Item {
         return result;
     }
 
-    public static int getShadowCount(ItemStack stack) {
-        return getStoredShadows(stack).size();
+    public static List<ShadowEntry> getShadowEntries(ItemStack stack) {
+        List<ShadowEntry> entries = new ArrayList<>();
+        entries.addAll(getFavoriteEntries(stack));
+        entries.addAll(getStandardEntries(stack));
+        return entries;
     }
 
-    public static void consumeShadow(ItemStack stack, ResourceLocation typeId) {
+    private static List<ShadowEntry> getFavoriteEntries(ItemStack stack) {
+        List<ShadowEntry> result = new ArrayList<>();
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains(TAG_FAVORITE_SHADOWS, Tag.TAG_LIST)) {
+            return result;
+        }
+
+        ListTag listTag = tag.getList(TAG_FAVORITE_SHADOWS, Tag.TAG_COMPOUND);
+        for (int i = 0; i < listTag.size(); i++) {
+            CompoundTag favoriteTag = listTag.getCompound(i);
+            ResourceLocation id = ResourceLocation.tryParse(favoriteTag.getString(KEY_FAVORITE_TYPE));
+            if (id != null) {
+                String name = favoriteTag.getString(KEY_FAVORITE_NAME);
+                result.add(new ShadowEntry(id, true, i, name));
+            }
+        }
+        return result;
+    }
+
+    private static List<ShadowEntry> getStandardEntries(ItemStack stack) {
+        List<ShadowEntry> result = new ArrayList<>();
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains(TAG_SHADOWS, Tag.TAG_LIST)) {
+            return result;
+        }
+
+        ListTag listTag = tag.getList(TAG_SHADOWS, Tag.TAG_STRING);
+        for (int i = 0; i < listTag.size(); i++) {
+            Tag element = listTag.get(i);
+            if (element instanceof StringTag stringTag) {
+                ResourceLocation id = ResourceLocation.tryParse(stringTag.getAsString());
+                if (id != null) {
+                    result.add(new ShadowEntry(id, false, i, ""));
+                }
+            }
+        }
+        return result;
+    }
+
+    public static int getShadowCount(ItemStack stack) {
+        return getStoredShadows(stack).size() + getFavoriteEntries(stack).size();
+    }
+
+    private static void removeStoredShadow(ItemStack stack, int index) {
         CompoundTag tag = stack.getTag();
         if (tag == null || !tag.contains(TAG_SHADOWS, Tag.TAG_LIST)) {
             return;
         }
 
         ListTag listTag = tag.getList(TAG_SHADOWS, Tag.TAG_STRING);
-        ListTag updated = new ListTag();
-        for (Tag element : listTag) {
-            if (element instanceof StringTag stringTag && stringTag.getAsString().equals(typeId.toString())) {
-                continue;
-            }
-            updated.add(element.copy());
+        if (index >= 0 && index < listTag.size()) {
+            listTag.remove(index);
         }
-        tag.put(TAG_SHADOWS, updated);
+
+        if (listTag.isEmpty()) {
+            tag.remove(TAG_SHADOWS);
+        } else {
+            tag.put(TAG_SHADOWS, listTag);
+        }
     }
 
-    private static void summonAllShadows(ServerPlayer player, ItemStack stack, List<ResourceLocation> stored) {
-        Set<ResourceLocation> summoned = new HashSet<>();
-        ShadowBehavior behavior = getBehavior(stack);
-        for (ResourceLocation typeId : stored) {
-            if (summonShadow(player, typeId, behavior, false, true)) {
-                summoned.add(typeId);
+    private static void removeFavoriteShadow(ItemStack stack, int index) {
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains(TAG_FAVORITE_SHADOWS, Tag.TAG_LIST)) {
+            return;
+        }
+
+        ListTag listTag = tag.getList(TAG_FAVORITE_SHADOWS, Tag.TAG_COMPOUND);
+        if (index >= 0 && index < listTag.size()) {
+            listTag.remove(index);
+        }
+
+        if (listTag.isEmpty()) {
+            tag.remove(TAG_FAVORITE_SHADOWS);
+        } else {
+            tag.put(TAG_FAVORITE_SHADOWS, listTag);
+        }
+    }
+
+    private static boolean summonAllShadows(ServerPlayer player, ItemStack stack, ShadowBehavior behavior) {
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains(TAG_SHADOWS, Tag.TAG_LIST)) {
+            player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.failed"), true);
+            return false;
+        }
+
+        ListTag listTag = tag.getList(TAG_SHADOWS, Tag.TAG_STRING);
+        if (listTag.isEmpty()) {
+            player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.failed"), true);
+            return false;
+        }
+
+        List<Integer> summonedIndices = new ArrayList<>();
+        for (int i = 0; i < listTag.size(); i++) {
+            Tag element = listTag.get(i);
+            if (element instanceof StringTag stringTag) {
+                ResourceLocation typeId = ResourceLocation.tryParse(stringTag.getAsString());
+                if (typeId != null && summonShadow(player, typeId, behavior, false, true)) {
+                    summonedIndices.add(i);
+                }
             }
         }
-        if (!summoned.isEmpty()) {
-            clearShadows(stack, summoned);
-            player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.summon_all", summoned.size()), true);
-        } else {
-            player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.failed"), true);
+
+        if (!summonedIndices.isEmpty()) {
+            for (int i = summonedIndices.size() - 1; i >= 0; i--) {
+                int index = summonedIndices.get(i);
+                listTag.remove(index);
+            }
+
+            if (listTag.isEmpty()) {
+                tag.remove(TAG_SHADOWS);
+            } else {
+                tag.put(TAG_SHADOWS, listTag);
+            }
+
+            player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.summon_all", summonedIndices.size()), true);
+            return true;
         }
+
+        player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.failed"), true);
+        return false;
     }
 
     public static boolean summonShadow(ServerPlayer player, ResourceLocation typeId, ShadowBehavior behavior) {
@@ -278,7 +454,7 @@ public class ShadowCollectorItem extends Item {
 
         mob.moveTo(player.getX(), player.getY(), player.getZ(), level.random.nextFloat() * 360.0F, 0);
         mob.finalizeSpawn(level, level.getCurrentDifficultyAt(player.blockPosition()), MobSpawnType.MOB_SUMMONED, null, null);
-        applyShadowAppearance(mob);
+        applyShadowAppearance(mob, false);
         ShadowSummonManager.registerShadow(mob, player, behavior);
         level.addFreshEntity(mob);
         if (notifyPlayer) {
@@ -287,14 +463,92 @@ public class ShadowCollectorItem extends Item {
         return true;
     }
 
-    private static void applyShadowAppearance(Mob mob) {
-        mob.setCustomName(Component.translatable("entity.vfx.shadow", mob.getType().getDescription()).withStyle(ChatFormatting.DARK_GRAY));
+    public static boolean summonStoredEntry(ServerPlayer player, ItemStack stack, ShadowEntry entry, ShadowBehavior behavior) {
+        if (entry.favorite()) {
+            boolean summoned = summonFavoriteShadow(player, stack, entry.index(), behavior);
+            if (summoned) {
+                removeFavoriteShadow(stack, entry.index());
+            }
+            return summoned;
+        }
+
+        if (summonShadow(player, entry.typeId(), behavior)) {
+            removeStoredShadow(stack, entry.index());
+            return true;
+        }
+        return false;
+    }
+
+    private static boolean summonFavoriteShadow(ServerPlayer player, ItemStack stack, int index, ShadowBehavior behavior) {
+        CompoundTag tag = stack.getTag();
+        if (tag == null || !tag.contains(TAG_FAVORITE_SHADOWS, Tag.TAG_LIST)) {
+            player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.failed"), true);
+            return false;
+        }
+
+        ListTag favorites = tag.getList(TAG_FAVORITE_SHADOWS, Tag.TAG_COMPOUND);
+        if (index < 0 || index >= favorites.size()) {
+            player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.failed"), true);
+            return false;
+        }
+
+        CompoundTag favoriteTag = favorites.getCompound(index);
+        ResourceLocation typeId = ResourceLocation.tryParse(favoriteTag.getString(KEY_FAVORITE_TYPE));
+        if (typeId == null) {
+            player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.failed"), true);
+            return false;
+        }
+
+        ServerLevel level = player.serverLevel();
+        boolean insideDomain = DarknessDomainManager.get(level).isInsideDomain(player.blockPosition());
+        if (!insideDomain) {
+            int outsideShadows = ShadowSummonManager.getActiveShadowCount(player, mob -> {
+                if (!(mob.level() instanceof ServerLevel mobLevel)) {
+                    return true;
+                }
+                return !DarknessDomainManager.isInsideAnyDomain(mobLevel, mob.blockPosition());
+            });
+            if (outsideShadows >= MAX_OUTSIDE_SHADOWS) {
+                player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.limit", MAX_OUTSIDE_SHADOWS), true);
+                return false;
+            }
+        }
+
+        EntityType<?> entityType = ForgeRegistries.ENTITY_TYPES.getValue(typeId);
+        if (entityType == null) {
+            player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.failed"), true);
+            return false;
+        }
+
+        Entity entity = entityType.create(level);
+        if (!(entity instanceof Mob mob)) {
+            player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.failed"), true);
+            return false;
+        }
+
+        CompoundTag entityData = favoriteTag.getCompound(KEY_FAVORITE_DATA).copy();
+        mob.load(entityData);
+        mob.moveTo(player.getX(), player.getY(), player.getZ(), level.random.nextFloat() * 360.0F, 0);
+        mob.setYHeadRot(mob.getYRot());
+        mob.setDeltaMovement(0, 0, 0);
+
+        applyShadowAppearance(mob, true);
+        ShadowSummonManager.registerShadow(mob, player, behavior);
+        level.addFreshEntity(mob);
+        player.displayClientMessage(Component.translatable("message.vfx.shadow_collector.summoned", mob.getDisplayName()), true);
+        return true;
+    }
+
+    private static void applyShadowAppearance(Mob mob, boolean preserveEquipmentAndName) {
+        if (!preserveEquipmentAndName) {
+            mob.setCustomName(Component.translatable("entity.vfx.shadow", mob.getType().getDescription()).withStyle(ChatFormatting.DARK_GRAY));
+        }
         mob.setCustomNameVisible(true);
         mob.setSilent(true);
 
         for (EquipmentSlot slot : EquipmentSlot.values()) {
             mob.setDropChance(slot, 0.0F);
-            if (!mob.getItemBySlot(slot).isEmpty()) {
+            if (!preserveEquipmentAndName && !mob.getItemBySlot(slot).isEmpty()) {
                 mob.setItemSlot(slot, ItemStack.EMPTY);
             }
         }
@@ -315,30 +569,11 @@ public class ShadowCollectorItem extends Item {
         }
     }
 
-    private static void clearShadows(ItemStack stack, Set<ResourceLocation> summoned) {
-        CompoundTag tag = stack.getTag();
-        if (tag == null || !tag.contains(TAG_SHADOWS, Tag.TAG_LIST)) {
-            return;
-        }
-
-        ListTag listTag = tag.getList(TAG_SHADOWS, Tag.TAG_STRING);
-        ListTag updated = new ListTag();
-        for (Tag element : listTag) {
-            if (element instanceof StringTag stringTag) {
-                ResourceLocation id = ResourceLocation.tryParse(stringTag.getAsString());
-                if (id != null && summoned.contains(id)) {
-                    continue;
-                }
-            }
-            updated.add(element.copy());
-        }
-        tag.put(TAG_SHADOWS, updated);
-    }
-
     public static void clearAll(ItemStack stack) {
         CompoundTag tag = stack.getTag();
         if (tag != null) {
             tag.remove(TAG_SHADOWS);
+            tag.remove(TAG_FAVORITE_SHADOWS);
         }
     }
 }

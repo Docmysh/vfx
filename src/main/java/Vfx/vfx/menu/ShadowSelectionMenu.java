@@ -2,6 +2,7 @@ package Vfx.vfx.menu;
 
 import Vfx.vfx.Vfx;
 import Vfx.vfx.item.ShadowCollectorItem;
+import Vfx.vfx.item.ShadowCollectorItem.ShadowEntry;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EntityType;
@@ -28,7 +29,7 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
     private static final int SLOTS_PER_ROW = 9;
     private static final int SLOTS_PER_PAGE = MAX_ROWS * SLOTS_PER_ROW;
     private static final int SLOT_BUTTON_OFFSET = 2;
-    private final List<ResourceLocation> shadows;
+    private final List<ShadowEntry> shadows;
     private final SimpleContainer container;
     private int totalPages;
     private int page = 0;
@@ -39,7 +40,7 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
         this(id, inventory, readShadows(buffer), buffer.readEnum(InteractionHand.class));
     }
 
-    public ShadowSelectionMenu(int id, Inventory inventory, List<ResourceLocation> shadows, InteractionHand hand) {
+    public ShadowSelectionMenu(int id, Inventory inventory, List<ShadowEntry> shadows, InteractionHand hand) {
         super(Vfx.SHADOW_SELECTION_MENU.get(), id);
         this.shadows = new ArrayList<>(shadows);
         this.container = new SimpleContainer(SLOTS_PER_PAGE);
@@ -65,40 +66,55 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
         refreshContents();
     }
 
-    public static void writeData(FriendlyByteBuf buffer, List<ResourceLocation> shadows, InteractionHand hand) {
+    public static void writeData(FriendlyByteBuf buffer, List<ShadowEntry> shadows, InteractionHand hand) {
         writeShadows(buffer, shadows);
         buffer.writeEnum(hand);
     }
 
-    private static void writeShadows(FriendlyByteBuf buffer, List<ResourceLocation> shadows) {
+    private static void writeShadows(FriendlyByteBuf buffer, List<ShadowEntry> shadows) {
         buffer.writeVarInt(shadows.size());
-        for (ResourceLocation id : shadows) {
-            buffer.writeResourceLocation(id);
+        for (ShadowEntry entry : shadows) {
+            buffer.writeResourceLocation(entry.typeId());
+            buffer.writeBoolean(entry.favorite());
+            buffer.writeVarInt(entry.index());
+            buffer.writeUtf(entry.name() == null ? "" : entry.name());
         }
     }
 
-    private static List<ResourceLocation> readShadows(FriendlyByteBuf buffer) {
+    private static List<ShadowEntry> readShadows(FriendlyByteBuf buffer) {
         int size = buffer.readVarInt();
-        List<ResourceLocation> list = new ArrayList<>(size);
+        List<ShadowEntry> list = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
-            list.add(buffer.readResourceLocation());
+            ResourceLocation id = buffer.readResourceLocation();
+            boolean favorite = buffer.readBoolean();
+            int index = buffer.readVarInt();
+            String name = buffer.readUtf(32767);
+            list.add(new ShadowEntry(id, favorite, index, name));
         }
         return list;
     }
 
-    private ItemStack createDisplayStack(ResourceLocation id) {
+    private ItemStack createDisplayStack(ShadowEntry entry) {
+        ResourceLocation id = entry.typeId();
+        EntityType<?> entityType = ForgeRegistries.ENTITY_TYPES.getValue(id);
+        Component entityName = entityType != null ? entityType.getDescription() : Component.literal(id.toString());
+
+        if (entry.favorite()) {
+            ItemStack stack = new ItemStack(Items.TOTEM_OF_UNDYING);
+            String displayName = entry.name() == null || entry.name().isEmpty() ? entityName.getString() : entry.name();
+            Component nameComponent = Component.literal(displayName).append(Component.literal(" (Favorite)"));
+            stack.setHoverName(nameComponent);
+            return stack;
+        }
+
         ItemStack stack = new ItemStack(Items.ECHO_SHARD);
-        if (ForgeRegistries.ENTITY_TYPES.containsKey(id)) {
-            EntityType<?> entityType = ForgeRegistries.ENTITY_TYPES.getValue(id);
-            if (entityType != null) {
-                SpawnEggItem eggItem = SpawnEggItem.byId(entityType);
-                if (eggItem != null) {
-                    stack = new ItemStack(eggItem);
-                }
-                Component entityName = entityType.getDescription();
-                stack.setHoverName(Component.translatable("menu.vfx.shadow_collector.entry", entityName));
-                return stack;
+        if (entityType != null) {
+            SpawnEggItem eggItem = SpawnEggItem.byId(entityType);
+            if (eggItem != null) {
+                stack = new ItemStack(eggItem);
             }
+            stack.setHoverName(Component.translatable("menu.vfx.shadow_collector.entry", entityName));
+            return stack;
         }
         stack.setHoverName(Component.translatable("menu.vfx.shadow_collector.entry", Component.literal(id.toString())));
         return stack;
@@ -187,13 +203,12 @@ public class ShadowSelectionMenu extends AbstractContainerMenu {
             return true;
         }
 
-        ResourceLocation typeId = shadows.get(globalIndex);
+        ShadowEntry entry = shadows.get(globalIndex);
         if (!player.level().isClientSide && player instanceof ServerPlayer serverPlayer) {
             ItemStack collector = player.getItemInHand(hand);
             if (collector.getItem() instanceof ShadowCollectorItem) {
                 ShadowCollectorItem.ShadowBehavior behavior = ShadowCollectorItem.getBehavior(collector);
-                if (ShadowCollectorItem.summonShadow(serverPlayer, typeId, behavior) && !collector.isEmpty()) {
-                    ShadowCollectorItem.consumeShadow(collector, typeId);
+                if (ShadowCollectorItem.summonStoredEntry(serverPlayer, collector, entry, behavior) && !collector.isEmpty()) {
                     shadows.remove(globalIndex);
                     refreshContents();
                     this.broadcastChanges();

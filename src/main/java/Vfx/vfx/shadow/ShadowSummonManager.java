@@ -171,15 +171,25 @@ public class ShadowSummonManager {
         if (!mob.getPersistentData().getBoolean(SHADOW_TAG)) {
             return;
         }
-        unregister(mob);
+        unregisterShadow(mob);
     }
 
-    private static void unregister(Mob mob) {
+    public static void unregisterShadow(Mob mob) {
         UUID id = mob.getUUID();
         ShadowData data = SHADOWS.remove(id);
         if (data != null) {
             removeFromOwner(data.ownerId(), id);
         }
+    }
+
+    public static boolean isOwnedBy(Mob mob, ServerPlayer player) {
+        if (player == null || mob == null) {
+            return false;
+        }
+        if (!mob.getPersistentData().contains(OWNER_TAG)) {
+            return false;
+        }
+        return mob.getPersistentData().getUUID(OWNER_TAG).equals(player.getUUID());
     }
 
     private static void cleanupOwner(UUID ownerId, MinecraftServer server) {
