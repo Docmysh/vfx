@@ -16,6 +16,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.AABB;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.BlockEvent;
+import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 
@@ -81,6 +82,13 @@ public class DarknessDomainManager {
         }
     }
 
+    private void revertAll() {
+        for (DarknessDomain domain : activeDomains) {
+            domain.revert();
+        }
+        activeDomains.clear();
+    }
+
     @SubscribeEvent
     public static void handleServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) {
@@ -111,6 +119,18 @@ public class DarknessDomainManager {
 
         if (manager.level == serverLevel && manager.isDarknessBlock(event.getPos())) {
             event.setCanceled(true);
+        }
+    }
+
+    @SubscribeEvent
+    public static void handleLevelUnload(LevelEvent.Unload event) {
+        if (!(event.getLevel() instanceof ServerLevel serverLevel)) {
+            return;
+        }
+
+        DarknessDomainManager manager = MANAGERS.remove(serverLevel.dimension());
+        if (manager != null && manager.level == serverLevel) {
+            manager.revertAll();
         }
     }
 
