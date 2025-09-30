@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * FPS field name (f_91021_) to exist on {@link Minecraft}. The field was renamed
  * in official mappings, so we mirror its value each client tick.
  */
-@Mixin(Minecraft.class)
+@Mixin(value = Minecraft.class, priority = 2000)
 public abstract class MinecraftPhotonFpsCompatMixin {
 
     @Shadow
