@@ -2,9 +2,14 @@ package Vfx.vfx;
 
 import com.mojang.logging.LogUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.food.FoodProperties;
+import Vfx.vfx.client.gui.ShadowSelectionScreen;
 import Vfx.vfx.item.DarknessRelicItem;
+import Vfx.vfx.item.ShadowCollectorItem;
+import Vfx.vfx.menu.ShadowSelectionMenu;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.CreativeModeTabs;
@@ -27,6 +32,7 @@ import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.IForgeMenuType;
 import net.minecraftforge.registries.RegistryObject;
 import org.slf4j.Logger;
 
@@ -44,7 +50,8 @@ public class Vfx {
     public static final DeferredRegister<Item> ITEMS = DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
     // Create a Deferred Register to hold CreativeModeTabs which will all be registered under the "vfx" namespace
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
-
+    // Create a Deferred Register for custom menus
+    public static final DeferredRegister<MenuType<?>> MENUS = DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
     // Creates a new Block with the id "vfx:example_block", combining the namespace and path
     public static final RegistryObject<Block> EXAMPLE_BLOCK = BLOCKS.register("example_block", () -> new Block(BlockBehaviour.Properties.of().mapColor(MapColor.STONE)));
     // Creates a new BlockItem with the id "vfx:example_block", combining the namespace and path
@@ -54,6 +61,10 @@ public class Vfx {
     public static final RegistryObject<Item> EXAMPLE_ITEM = ITEMS.register("example_item", () -> new Item(new Item.Properties().food(new FoodProperties.Builder().alwaysEat().nutrition(1).saturationMod(2f).build())));
 
     public static final RegistryObject<Item> DARKNESS_RELIC = ITEMS.register("darkness_relic", () -> new DarknessRelicItem(new Item.Properties().stacksTo(1)));
+
+    public static final RegistryObject<Item> SHADOW_COLLECTOR = ITEMS.register("shadow_collector", () -> new ShadowCollectorItem(new Item.Properties().stacksTo(1)));
+
+    public static final RegistryObject<MenuType<ShadowSelectionMenu>> SHADOW_SELECTION_MENU = MENUS.register("shadow_selection", () -> IForgeMenuType.create(ShadowSelectionMenu::new));
 
     // Creates a creative tab with the id "vfx:example_tab" for the example item, that is placed after the combat tab
     public static final RegistryObject<CreativeModeTab> EXAMPLE_TAB = CREATIVE_MODE_TABS.register("example_tab", () -> CreativeModeTab.builder().withTabsBefore(CreativeModeTabs.COMBAT).icon(() -> EXAMPLE_ITEM.get().getDefaultInstance()).displayItems((parameters, output) -> {
@@ -72,6 +83,7 @@ public class Vfx {
         ITEMS.register(modEventBus);
         // Register the Deferred Register to the mod event bus so tabs get registered
         CREATIVE_MODE_TABS.register(modEventBus);
+        MENUS.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
@@ -103,6 +115,7 @@ public class Vfx {
 
         if (event.getTabKey() == CreativeModeTabs.COMBAT) {
             event.accept(DARKNESS_RELIC);
+            event.accept(SHADOW_COLLECTOR);
         }
     }
 
@@ -122,6 +135,8 @@ public class Vfx {
             // Some client setup code
             LOGGER.info("HELLO FROM CLIENT SETUP");
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
+
+            MenuScreens.register(Vfx.SHADOW_SELECTION_MENU.get(), ShadowSelectionScreen::new);
         }
     }
 }

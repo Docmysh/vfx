@@ -51,6 +51,16 @@ public class DarknessDomainManager {
         activeDomains.add(domain);
     }
 
+    public boolean isInsideDomain(BlockPos pos) {
+        for (DarknessDomain domain : activeDomains) {
+            if (domain.containsPosition(pos)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     private boolean isDarknessBlock(BlockPos pos) {
         for (DarknessDomain domain : activeDomains) {
             if (domain.contains(pos)) {

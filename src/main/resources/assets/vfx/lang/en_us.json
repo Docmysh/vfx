@@ -1,3 +1,14 @@
 {
-  "item.vfx.darkness_relic": "Relic of Encompassing Night"
+  "item.vfx.darkness_relic": "Relic of Encompassing Night",
+  "item.vfx.shadow_collector": "Shadow Reliquary",
+  "tooltip.vfx.shadow_collector.count": "Stored Shadows: %s",
+  "message.vfx.shadow_collector.empty": "The reliquary holds no shadows.",
+  "message.vfx.shadow_collector.captured": "Captured the shadow of %s.",
+  "message.vfx.shadow_collector.summoned": "Summoned %s from the reliquary.",
+  "message.vfx.shadow_collector.summon_all": "Released %s shadows from the reliquary.",
+  "message.vfx.shadow_collector.failed": "The shadows refuse to answer the call.",
+  "screen.vfx.shadow_collector": "Shadow Reliquary",
+  "screen.vfx.shadow_collector.page": "Page %1$s / %2$s",
+  "menu.vfx.shadow_collector.entry": "Summon %s",
+  "entity.vfx.shadow": "Shadow %s"
 }
