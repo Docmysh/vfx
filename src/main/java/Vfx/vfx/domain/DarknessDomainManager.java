@@ -2,13 +2,13 @@ package Vfx.vfx.domain;
 
 import Vfx.vfx.Vfx;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.SectionPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.AreaEffectCloud;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
@@ -115,7 +115,8 @@ public class DarknessDomainManager {
         }
 
         private void ensureChunksLoaded(int x, int z) {
-            level.getChunkSource().addRegionTicket(TicketType.POST_TELEPORT, SectionPos.of(new BlockPos(x, center.getY(), z)), 1, center);
+            BlockPos targetPos = new BlockPos(x, center.getY(), z);
+            level.getChunkSource().addRegionTicket(TicketType.POST_TELEPORT, new ChunkPos(targetPos), 1, center);
         }
 
         private void spawnDarknessCloud(int half) {
