@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "Vfx.vfx.mixin",
+  "compatibilityLevel": "JAVA_17",
+  "client": [
+    "MinecraftPhotonFpsCompatMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
