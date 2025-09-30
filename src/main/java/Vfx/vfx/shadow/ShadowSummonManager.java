@@ -376,6 +376,14 @@ public class ShadowSummonManager {
 
     private static void ensureAttackAttribute(Mob mob) {
         AttributeInstance attack = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        if (attack == null) {
+            try {
+                mob.getAttributes().createInstanceIfAbsent(Attributes.ATTACK_DAMAGE);
+            } catch (IllegalArgumentException ignored) {
+                return;
+            }
+            attack = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        }
         if (attack != null && attack.getBaseValue() < 2.0D) {
             attack.setBaseValue(2.0D);
         }
