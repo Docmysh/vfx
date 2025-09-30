@@ -165,7 +165,6 @@ public class DarknessDomainManager {
             cloud.setDuration(Math.max(durationTicks, 1));
             cloud.setWaitTime(0);
             cloud.setRadiusPerTick(0);
-            cloud.setReapplicationDelay(Integer.MAX_VALUE);
             cloud.addEffect(new MobEffectInstance(MobEffects.DARKNESS, Math.max(durationTicks, 1)));
             level.addFreshEntity(cloud);
         }
