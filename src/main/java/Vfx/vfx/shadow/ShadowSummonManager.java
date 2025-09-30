@@ -10,6 +10,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.entity.ai.attributes.AttributeMap;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.goal.GoalSelector;
 import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
@@ -375,7 +376,11 @@ public class ShadowSummonManager {
     }
 
     private static void ensureAttackAttribute(Mob mob) {
-        AttributeInstance attack = mob.getAttribute(Attributes.ATTACK_DAMAGE);
+        AttributeMap attributes = mob.getAttributes();
+        AttributeInstance attack = attributes.getInstance(Attributes.ATTACK_DAMAGE);
+        if (attack == null) {
+            attack = attributes.registerAttribute(Attributes.ATTACK_DAMAGE);
+        }
         if (attack != null && attack.getBaseValue() < 2.0D) {
             attack.setBaseValue(2.0D);
         }
