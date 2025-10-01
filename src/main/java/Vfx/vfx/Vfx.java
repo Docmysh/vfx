@@ -14,6 +14,7 @@ import Vfx.vfx.item.ShadowCollectorItem;
 import Vfx.vfx.item.ShadowHandRelicItem;
 import Vfx.vfx.item.UmbralLensItem;
 import Vfx.vfx.item.BallOfShadowItem;
+import Vfx.vfx.item.GravityDomainTalismanItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.core.registries.Registries;
@@ -77,6 +78,7 @@ public class Vfx {
 
     public static final RegistryObject<Item> SHADOW_COLLECTOR = ITEMS.register("shadow_collector", () -> new ShadowCollectorItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> DOMAIN_OF_SHADOWS_RELIC = ITEMS.register("domain_of_shadows_relic", () -> new DomainOfShadowsRelicItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> GRAVITY_DOMAIN_TALISMAN = ITEMS.register("gravity_domain_talisman", () -> new GravityDomainTalismanItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> UMBRAL_LENS = ITEMS.register("umbral_lens", () -> new UmbralLensItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> SHADOW_HAND_RELIC = ITEMS.register("shadow_hand_relic", () -> new ShadowHandRelicItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> BALL_OF_SHADOW = ITEMS.register("ball_of_shadow", () -> new BallOfShadowItem(new Item.Properties().stacksTo(1)));
@@ -142,6 +144,7 @@ public class Vfx {
             event.accept(DARKNESS_RELIC);
             event.accept(SHADOW_COLLECTOR);
             event.accept(DOMAIN_OF_SHADOWS_RELIC);
+            event.accept(GRAVITY_DOMAIN_TALISMAN);
             event.accept(UMBRAL_LENS);
             event.accept(SHADOW_HAND_RELIC);
             event.accept(BALL_OF_SHADOW);
