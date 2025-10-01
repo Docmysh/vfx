@@ -12,7 +12,6 @@ import Vfx.vfx.item.ShadowHandRelicItem;
 import Vfx.vfx.item.UmbralLensItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
-import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.food.FoodProperties;
 import Vfx.vfx.menu.ShadowSelectionMenu;
@@ -157,7 +156,6 @@ public class Vfx {
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
 
             MenuScreens.register(Vfx.SHADOW_SELECTION_MENU.get(), ShadowSelectionScreen::new);
-            EntityRenderers.register(VfxEntities.SHADOW_HAND.get(), ShadowHandRenderer::new);
         }
 
         @SubscribeEvent
@@ -168,6 +166,11 @@ public class Vfx {
         @SubscribeEvent
         public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
             event.registerLayerDefinition(ShadowHandModel.LAYER_LOCATION, ShadowHandModel::createBodyLayer);
+        }
+
+        @SubscribeEvent
+        public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
+            event.registerEntityRenderer(VfxEntities.SHADOW_HAND.get(), ShadowHandRenderer::new);
         }
     }
 }
