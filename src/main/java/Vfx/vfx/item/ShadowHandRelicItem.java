@@ -1,6 +1,7 @@
 package Vfx.vfx.item;
 
 import Vfx.vfx.VfxEntities;
+import Vfx.vfx.entity.HandGrabEntity;
 import Vfx.vfx.entity.shadow.ShadowHandEntity;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
@@ -58,6 +59,8 @@ public class ShadowHandRelicItem extends Item {
         handEntity.setTarget(target);
         handEntity.setOwner(serverPlayer);
         serverLevel.addFreshEntity(handEntity);
+
+        HandGrabEntity.spawn(serverLevel, serverPlayer, target, 1.0F, 40);
         player.getCooldowns().addCooldown(this, COOLDOWN_TICKS);
         player.swing(hand, true);
         return InteractionResult.SUCCESS;

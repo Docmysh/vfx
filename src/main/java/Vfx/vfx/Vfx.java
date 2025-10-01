@@ -4,6 +4,7 @@ import com.mojang.logging.LogUtils;
 import Vfx.vfx.client.gui.ShadowSelectionScreen;
 import Vfx.vfx.client.model.ShadowHandModel;
 import Vfx.vfx.client.particle.ShadowDomainParticle;
+import Vfx.vfx.client.render.HandGrabRenderer;
 import Vfx.vfx.client.render.ShadowHandRenderer;
 import Vfx.vfx.item.DarknessRelicItem;
 import Vfx.vfx.item.DomainOfShadowsRelicItem;
@@ -43,6 +44,7 @@ import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
 import org.slf4j.Logger;
+import software.bernie.geckolib.GeckoLib;
 
 // The value here should match an entry in the META-INF/mods.toml file
 @Mod(Vfx.MODID)
@@ -87,6 +89,8 @@ public class Vfx {
 
     public Vfx() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
+
+        GeckoLib.initialize();
 
         // Register the commonSetup method for modloading
         modEventBus.addListener(this::commonSetup);
@@ -171,6 +175,7 @@ public class Vfx {
         @SubscribeEvent
         public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
             event.registerEntityRenderer(VfxEntities.SHADOW_HAND.get(), ShadowHandRenderer::new);
+            event.registerEntityRenderer(VfxEntities.HAND_GRAB.get(), HandGrabRenderer::new);
         }
     }
 }

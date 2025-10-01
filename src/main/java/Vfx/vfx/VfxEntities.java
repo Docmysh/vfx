@@ -1,5 +1,6 @@
 package Vfx.vfx;
 
+import Vfx.vfx.entity.HandGrabEntity;
 import Vfx.vfx.entity.shadow.ShadowHandEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -22,6 +23,15 @@ public final class VfxEntities {
                     .clientTrackingRange(16)
                     .updateInterval(1)
                     .build("shadow_hand")
+    );
+
+    public static final RegistryObject<EntityType<HandGrabEntity>> HAND_GRAB = ENTITY_TYPES.register(
+            "hand_grab",
+            () -> EntityType.Builder.<HandGrabEntity>of(HandGrabEntity::new, MobCategory.MISC)
+                    .sized(0.75F, 0.75F)
+                    .clientTrackingRange(16)
+                    .updateInterval(1)
+                    .build("hand_grab")
     );
 
     public static void register(IEventBus eventBus) {

@@ -1,0 +1,40 @@
+{
+  "format_version": "1.12.0",
+  "minecraft:geometry": [
+    {
+      "description": {
+        "identifier": "geometry.vfx.hand",
+        "texture_width": 64,
+        "texture_height": 64,
+        "visible_bounds_width": 4,
+        "visible_bounds_height": 4,
+        "visible_bounds_offset": [0, 1, 0]
+      },
+      "bones": [
+        {
+          "name": "root",
+          "pivot": [0, 0, 0],
+          "cubes": [
+            {
+              "origin": [-4, 0, -4],
+              "size": [8, 2, 8],
+              "uv": [0, 0]
+            }
+          ]
+        },
+        {
+          "name": "fingers",
+          "parent": "root",
+          "pivot": [0, 2, 0],
+          "cubes": [
+            {
+              "origin": [-3.5, 2, -3.5],
+              "size": [7, 1.5, 7],
+              "uv": [0, 20]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

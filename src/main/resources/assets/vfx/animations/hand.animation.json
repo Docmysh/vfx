@@ -1,0 +1,58 @@
+{
+  "format_version": "1.8.0",
+  "animations": {
+    "appear": {
+      "animation_length": 0.6,
+      "bones": {
+        "root": {
+          "scale": [
+            {
+              "time": 0,
+              "value": [0.15, 0.15, 0.15]
+            },
+            {
+              "time": 0.6,
+              "value": [1.0, 1.0, 1.0]
+            }
+          ]
+        }
+      }
+    },
+    "squeeze": {
+      "loop": true,
+      "animation_length": 1.2,
+      "bones": {
+        "fingers": {
+          "rotation": [
+            {
+              "time": 0,
+              "value": [0.0, 0.0, 0.0]
+            },
+            {
+              "time": 0.6,
+              "value": [7.5, 0.0, 0.0]
+            },
+            {
+              "time": 1.2,
+              "value": [0.0, 0.0, 0.0]
+            }
+          ],
+          "scale": [
+            {
+              "time": 0.0,
+              "value": [1.0, 1.0, 1.0]
+            },
+            {
+              "time": 0.6,
+              "value": [0.92, 0.95, 0.92]
+            },
+            {
+              "time": 1.2,
+              "value": [1.0, 1.0, 1.0]
+            }
+          ]
+        }
+      }
+    }
+  }
+}
