@@ -41,6 +41,10 @@ public class HandGrabEntity extends Entity implements GeoEntity {
             SynchedEntityData.defineId(HandGrabEntity.class, EntityDataSerializers.OPTIONAL_UUID);
     private static final EntityDataAccessor<Integer> LIFE_TICKS =
             SynchedEntityData.defineId(HandGrabEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> OWNER_ID =
+            SynchedEntityData.defineId(HandGrabEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> TARGET_ID =
+            SynchedEntityData.defineId(HandGrabEntity.class, EntityDataSerializers.INT);
 
     @Nullable
     private UUID ownerUuid;
@@ -48,6 +52,9 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     private UUID targetUuid;
     private int life;
     private float strength = 1.0F;
+
+    private int ownerId = -1;
+    private int targetId = -1;
 
     @Nullable
     private Entity cachedOwner;
@@ -90,6 +97,8 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         this.entityData.define(OWNER_UUID, Optional.empty());
         this.entityData.define(TARGET_UUID, Optional.empty());
         this.entityData.define(LIFE_TICKS, 0);
+        this.entityData.define(OWNER_ID, -1);
+        this.entityData.define(TARGET_ID, -1);
     }
 
     @Override
@@ -101,6 +110,10 @@ public class HandGrabEntity extends Entity implements GeoEntity {
             this.targetUuid = this.entityData.get(TARGET_UUID).orElse(null);
         } else if (key.equals(LIFE_TICKS)) {
             this.life = this.entityData.get(LIFE_TICKS);
+        } else if (key.equals(OWNER_ID)) {
+            this.ownerId = this.entityData.get(OWNER_ID);
+        } else if (key.equals(TARGET_ID)) {
+            this.targetId = this.entityData.get(TARGET_ID);
         }
     }
 
@@ -117,6 +130,10 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         this.life = tag.getInt(TAG_LIFE);
         this.strength = tag.getFloat(TAG_STRENGTH);
         this.entityData.set(LIFE_TICKS, this.life);
+        this.entityData.set(OWNER_ID, -1);
+        this.entityData.set(TARGET_ID, -1);
+        this.ownerId = -1;
+        this.targetId = -1;
     }
 
     @Override
@@ -184,8 +201,14 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         Entity entity = null;
         if (level() instanceof ServerLevel serverLevel) {
             entity = serverLevel.getEntity(this.targetUuid);
+            if (entity != null) {
+                this.targetId = entity.getId();
+                this.entityData.set(TARGET_ID, this.targetId);
+            }
         } else if (level() instanceof ClientLevel clientLevel) {
-            entity = clientLevel.getEntity(this.targetUuid);
+            if (this.targetId != -1) {
+                entity = clientLevel.getEntity(this.targetId);
+            }
         }
 
         if (entity instanceof LivingEntity livingEntity) {
@@ -207,8 +230,14 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         Entity entity = null;
         if (level() instanceof ServerLevel serverLevel) {
             entity = serverLevel.getEntity(this.ownerUuid);
+            if (entity != null) {
+                this.ownerId = entity.getId();
+                this.entityData.set(OWNER_ID, this.ownerId);
+            }
         } else if (level() instanceof ClientLevel clientLevel) {
-            entity = clientLevel.getEntity(this.ownerUuid);
+            if (this.ownerId != -1) {
+                entity = clientLevel.getEntity(this.ownerId);
+            }
         }
 
         if (entity != null) {
@@ -229,12 +258,16 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         this.ownerUuid = owner.getUUID();
         this.cachedOwner = owner;
         this.entityData.set(OWNER_UUID, Optional.of(this.ownerUuid));
+        this.ownerId = owner.getId();
+        this.entityData.set(OWNER_ID, this.ownerId);
     }
 
     private void setTarget(LivingEntity target) {
         this.targetUuid = target.getUUID();
         this.cachedTarget = target;
         this.entityData.set(TARGET_UUID, Optional.of(this.targetUuid));
+        this.targetId = target.getId();
+        this.entityData.set(TARGET_ID, this.targetId);
     }
 
     private void setLifetime(int duration) {
