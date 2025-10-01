@@ -15,6 +15,8 @@ import Vfx.vfx.item.ShadowHandRelicItem;
 import Vfx.vfx.item.UmbralLensItem;
 import Vfx.vfx.item.BallOfShadowItem;
 import Vfx.vfx.item.GravityDomainTalismanItem;
+import Vfx.vfx.item.GravityWellTotemItem;
+import Vfx.vfx.item.SingularityCoreItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.core.registries.Registries;
@@ -83,6 +85,8 @@ public class Vfx {
     public static final RegistryObject<Item> SHADOW_HAND_RELIC = ITEMS.register("shadow_hand_relic", () -> new ShadowHandRelicItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> BALL_OF_SHADOW = ITEMS.register("ball_of_shadow", () -> new BallOfShadowItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> GRAVITATIONAL_STEP_CHARM = ITEMS.register("gravitational_step_charm", () -> new GravitationalStepCharmItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> SINGULARITY_CORE = ITEMS.register("singularity_core", () -> new SingularityCoreItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> GRAVITY_WELL_TOTEM = ITEMS.register("gravity_well_totem", () -> new GravityWellTotemItem(new Item.Properties().stacksTo(1)));
 
     public static final RegistryObject<MenuType<ShadowSelectionMenu>> SHADOW_SELECTION_MENU = MENUS.register(
             "shadow_selection",
@@ -149,6 +153,8 @@ public class Vfx {
             event.accept(SHADOW_HAND_RELIC);
             event.accept(BALL_OF_SHADOW);
             event.accept(GRAVITATIONAL_STEP_CHARM);
+            event.accept(SINGULARITY_CORE);
+            event.accept(GRAVITY_WELL_TOTEM);
         }
     }
 
