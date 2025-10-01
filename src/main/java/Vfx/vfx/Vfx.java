@@ -5,12 +5,14 @@ import Vfx.vfx.client.gui.ShadowSelectionScreen;
 import Vfx.vfx.client.model.ShadowHandModel;
 import Vfx.vfx.client.particle.ShadowDomainParticle;
 import Vfx.vfx.client.render.HandGrabRenderer;
+import Vfx.vfx.client.render.ShadowBallRenderer;
 import Vfx.vfx.client.render.ShadowHandRenderer;
 import Vfx.vfx.item.DarknessRelicItem;
 import Vfx.vfx.item.DomainOfShadowsRelicItem;
 import Vfx.vfx.item.ShadowCollectorItem;
 import Vfx.vfx.item.ShadowHandRelicItem;
 import Vfx.vfx.item.UmbralLensItem;
+import Vfx.vfx.item.BallOfShadowItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.core.registries.Registries;
@@ -76,6 +78,7 @@ public class Vfx {
     public static final RegistryObject<Item> DOMAIN_OF_SHADOWS_RELIC = ITEMS.register("domain_of_shadows_relic", () -> new DomainOfShadowsRelicItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> UMBRAL_LENS = ITEMS.register("umbral_lens", () -> new UmbralLensItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> SHADOW_HAND_RELIC = ITEMS.register("shadow_hand_relic", () -> new ShadowHandRelicItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> BALL_OF_SHADOW = ITEMS.register("ball_of_shadow", () -> new BallOfShadowItem(new Item.Properties().stacksTo(1)));
 
     public static final RegistryObject<MenuType<ShadowSelectionMenu>> SHADOW_SELECTION_MENU = MENUS.register(
             "shadow_selection",
@@ -139,6 +142,7 @@ public class Vfx {
             event.accept(DOMAIN_OF_SHADOWS_RELIC);
             event.accept(UMBRAL_LENS);
             event.accept(SHADOW_HAND_RELIC);
+            event.accept(BALL_OF_SHADOW);
         }
     }
 
@@ -176,6 +180,7 @@ public class Vfx {
         public static void registerEntityRenderers(EntityRenderersEvent.RegisterRenderers event) {
             event.registerEntityRenderer(VfxEntities.SHADOW_HAND.get(), ShadowHandRenderer::new);
             event.registerEntityRenderer(VfxEntities.HAND_GRAB.get(), HandGrabRenderer::new);
+            event.registerEntityRenderer(VfxEntities.SHADOW_BALL.get(), ShadowBallRenderer::new);
         }
     }
 }
