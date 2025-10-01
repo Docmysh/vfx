@@ -149,8 +149,8 @@ dependencies {
     // http://www.gradle.org/docs/current/userguide/artifact_dependencies_tutorial.html
     // http://www.gradle.org/docs/current/userguide/dependency_management.html
 
-    implementation fg.deobf("com.lowdragmc.photon:photon-forge-1.20.1:{latest_version}") { transitive = false }
-    implementation fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:{latest_version}") { transitive = false }
+    implementation fg.deobf("com.lowdragmc.photon:photon-forge-1.20.1:${photon_version}") { transitive = false }
+    implementation fg.deobf("com.lowdragmc.ldlib:ldlib-forge-1.20.1:${ldlib_version}") { transitive = false }
 
 }
 
