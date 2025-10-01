@@ -219,7 +219,7 @@ public class GravitationalStepCharmItem extends Item {
             data.putString(PLAYER_POSE_TAG, player.getPose().name());
         }
 
-        Pose targetPose = orientation == Direction.DOWN ? Pose.STANDING : Pose.SWIMMING;
+        Pose targetPose = Pose.STANDING;
         if (player.getPose() != targetPose) {
             player.setPose(targetPose);
             player.refreshDimensions();
@@ -255,5 +255,13 @@ public class GravitationalStepCharmItem extends Item {
             case EAST -> "East";
             case WEST -> "West";
         };
+    }
+
+    public static Direction getActiveOrientation(Player player) {
+        ItemStack stack = findCharm(player);
+        if (!stack.isEmpty() && stack.getItem() instanceof GravitationalStepCharmItem) {
+            return getOrientation(stack);
+        }
+        return Direction.DOWN;
     }
 }
