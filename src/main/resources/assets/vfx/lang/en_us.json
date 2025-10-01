@@ -30,5 +30,7 @@
   "behavior.vfx.shadow.hostile": "Hostile",
   "mode.vfx.shadow_hand_relic.crush": "Crushing Grip",
   "mode.vfx.shadow_hand_relic.throw": "Hurling Grasp",
-  "message.vfx.shadow_hand_relic.mode": "Grasping hand mode set to %s."
+  "message.vfx.shadow_hand_relic.mode": "Grasping hand mode set to %s.",
+  "item.vfx.gravitational_step_charm": "Gravitational Step Charm",
+  "item.vfx.gravitational_step_charm.description": "Allows the wearer to reorient gravity at will. Walk on walls or ceilings as if they were solid ground."
 }

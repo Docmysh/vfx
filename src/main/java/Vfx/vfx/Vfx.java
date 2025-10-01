@@ -9,6 +9,7 @@ import Vfx.vfx.client.render.ShadowBallRenderer;
 import Vfx.vfx.client.render.ShadowHandRenderer;
 import Vfx.vfx.item.DarknessRelicItem;
 import Vfx.vfx.item.DomainOfShadowsRelicItem;
+import Vfx.vfx.item.GravitationalStepCharmItem;
 import Vfx.vfx.item.ShadowCollectorItem;
 import Vfx.vfx.item.ShadowHandRelicItem;
 import Vfx.vfx.item.UmbralLensItem;
@@ -79,6 +80,7 @@ public class Vfx {
     public static final RegistryObject<Item> UMBRAL_LENS = ITEMS.register("umbral_lens", () -> new UmbralLensItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> SHADOW_HAND_RELIC = ITEMS.register("shadow_hand_relic", () -> new ShadowHandRelicItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> BALL_OF_SHADOW = ITEMS.register("ball_of_shadow", () -> new BallOfShadowItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> GRAVITATIONAL_STEP_CHARM = ITEMS.register("gravitational_step_charm", () -> new GravitationalStepCharmItem(new Item.Properties().stacksTo(1)));
 
     public static final RegistryObject<MenuType<ShadowSelectionMenu>> SHADOW_SELECTION_MENU = MENUS.register(
             "shadow_selection",
@@ -143,6 +145,7 @@ public class Vfx {
             event.accept(UMBRAL_LENS);
             event.accept(SHADOW_HAND_RELIC);
             event.accept(BALL_OF_SHADOW);
+            event.accept(GRAVITATIONAL_STEP_CHARM);
         }
     }
 
