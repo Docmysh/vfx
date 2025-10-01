@@ -182,7 +182,7 @@ public class GravitationalStepCharmItem extends Item {
             return currentSurface.scale(0.91D);
         }
 
-        Vec3 reference = Math.abs(gravity.y) < 0.999D ? Vec3.UNIT_Y : Vec3.UNIT_Z;
+        Vec3 reference = Math.abs(gravity.y) < 0.999D ? new Vec3(0.0D, 1.0D, 0.0D) : new Vec3(0.0D, 0.0D, 1.0D);
         Vec3 right = gravity.cross(reference).normalize();
         if (right.lengthSqr() < 1.0E-6D) {
             right = new Vec3(1.0D, 0.0D, 0.0D);
