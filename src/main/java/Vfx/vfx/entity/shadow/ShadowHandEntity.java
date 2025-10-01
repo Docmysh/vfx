@@ -90,7 +90,9 @@ public class ShadowHandEntity extends Entity {
 
         LivingEntity target = getTarget();
         if (target == null || !target.isAlive()) {
-            this.discard();
+            if (!level().isClientSide) {
+                this.discard();
+            }
             return;
         }
 
