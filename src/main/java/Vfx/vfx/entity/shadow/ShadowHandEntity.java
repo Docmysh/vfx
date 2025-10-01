@@ -1,5 +1,6 @@
 package Vfx.vfx.entity.shadow;
 
+import Vfx.vfx.entity.HandGrabEntity;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -48,6 +49,8 @@ public class ShadowHandEntity extends Entity {
     private LivingEntity cachedTarget;
     private Entity cachedOwner;
     private ShadowHandMode mode = ShadowHandMode.CRUSH;
+    @Nullable
+    private HandGrabEntity grabEntity;
 
     @OnlyIn(Dist.CLIENT)
     private final AnimationState appearAnimationState = new AnimationState();
@@ -111,6 +114,18 @@ public class ShadowHandEntity extends Entity {
                 this.discard();
             }
             return;
+        }
+
+        if (!level().isClientSide) {
+            if (this.grabEntity != null && !this.grabEntity.isAlive()) {
+                this.grabEntity = null;
+            }
+            if (this.grabEntity == null) {
+                Entity owner = getOwner();
+                if (owner instanceof LivingEntity livingOwner && level() instanceof ServerLevel serverLevel) {
+                    this.grabEntity = HandGrabEntity.findActive(serverLevel, livingOwner, target);
+                }
+            }
         }
 
         this.setPos(target.getX(), target.getY(), target.getZ());
@@ -178,6 +193,21 @@ public class ShadowHandEntity extends Entity {
         target.hasImpulse = true;
         target.hurtMarked = true;
         target.fallDistance = 0.0F;
+        if (level().isClientSide) {
+            return;
+        }
+        if (this.grabEntity != null && this.grabEntity.isAlive()) {
+            this.grabEntity.enablePlayerReleaseControl();
+        } else if (level() instanceof ServerLevel serverLevel) {
+            Entity owner = getOwner();
+            if (owner instanceof LivingEntity livingOwner) {
+                HandGrabEntity found = HandGrabEntity.findActive(serverLevel, livingOwner, target);
+                if (found != null) {
+                    this.grabEntity = found;
+                    found.enablePlayerReleaseControl();
+                }
+            }
+        }
     }
 
     private DamageSource createDamageSource() {
@@ -254,6 +284,10 @@ public class ShadowHandEntity extends Entity {
     public void setMode(ShadowHandMode mode) {
         this.mode = mode;
         this.entityData.set(MODE, mode.getId());
+    }
+
+    public void setGrabEntity(@Nullable HandGrabEntity grabEntity) {
+        this.grabEntity = grabEntity;
     }
 
     public ShadowHandMode getMode() {

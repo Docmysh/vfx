@@ -37,6 +37,8 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     private static final String TAG_STRENGTH = "Strength";
     private static final String TAG_MODE = "Mode";
     private static final String TAG_HOLD_DISTANCE = "HoldDistance";
+    private static final String TAG_AWAITING_RELEASE = "AwaitingRelease";
+    private static final String TAG_RELEASE_REQUESTED = "ReleaseRequested";
 
     private static final EntityDataAccessor<Optional<UUID>> OWNER_UUID =
             SynchedEntityData.defineId(HandGrabEntity.class, EntityDataSerializers.OPTIONAL_UUID);
@@ -62,6 +64,8 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     private Vec3 lastHoldPosition = Vec3.ZERO;
     private Vec3 previousHoldPosition = Vec3.ZERO;
     private boolean hasHoldPosition;
+    private boolean awaitingManualRelease;
+    private boolean releaseRequested;
 
     private int ownerId = -1;
     private int targetId = -1;
@@ -161,6 +165,12 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         if (tag.contains(TAG_HOLD_DISTANCE)) {
             this.holdDistance = tag.getDouble(TAG_HOLD_DISTANCE);
         }
+        if (tag.contains(TAG_AWAITING_RELEASE)) {
+            this.awaitingManualRelease = tag.getBoolean(TAG_AWAITING_RELEASE);
+        } else {
+            this.awaitingManualRelease = false;
+        }
+        this.releaseRequested = tag.getBoolean(TAG_RELEASE_REQUESTED);
         this.hasHoldPosition = false;
         this.previousHoldPosition = Vec3.ZERO;
         this.lastHoldPosition = Vec3.ZERO;
@@ -178,6 +188,8 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         tag.putFloat(TAG_STRENGTH, this.strength);
         tag.putInt(TAG_MODE, getMode().getId());
         tag.putDouble(TAG_HOLD_DISTANCE, this.holdDistance);
+        tag.putBoolean(TAG_AWAITING_RELEASE, this.awaitingManualRelease);
+        tag.putBoolean(TAG_RELEASE_REQUESTED, this.releaseRequested);
     }
 
     @Override
@@ -204,19 +216,31 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         setPos(center);
 
         if (!level().isClientSide) {
-            if (this.life <= 0) {
-                if (getMode() == ShadowHandMode.THROW) {
-                    throwTarget(target);
-                }
-                discard();
-                return;
-            }
-            this.life--;
-            this.entityData.set(LIFE_TICKS, Math.max(this.life, 0));
-
-            if (getMode() == ShadowHandMode.THROW) {
+            boolean throwMode = getMode() == ShadowHandMode.THROW;
+            if (throwMode) {
                 holdTarget(target, center);
+                if (!this.awaitingManualRelease) {
+                    if (this.life <= 0) {
+                        enableManualReleasePhase();
+                    } else {
+                        this.life--;
+                        this.entityData.set(LIFE_TICKS, Math.max(this.life, 0));
+                    }
+                } else {
+                    this.entityData.set(LIFE_TICKS, 1);
+                    if (this.releaseRequested) {
+                        throwTarget(target);
+                        discard();
+                        return;
+                    }
+                }
             } else {
+                if (this.life <= 0) {
+                    discard();
+                    return;
+                }
+                this.life--;
+                this.entityData.set(LIFE_TICKS, Math.max(this.life, 0));
                 target.setDeltaMovement(target.getDeltaMovement().scale(0.2D));
                 if (tickCount % 10 == 0) {
                     target.hurt(createDamageSource(), 1.0F * this.strength);
@@ -331,7 +355,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         this.entityData.set(MODE, mode.getId());
     }
 
-    private ShadowHandMode getMode() {
+    public ShadowHandMode getMode() {
         if (level().isClientSide) {
             this.mode = ShadowHandMode.byId(this.entityData.get(MODE));
         }
@@ -383,6 +407,8 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     }
 
     private void initializeHoldParameters(LivingEntity owner, Vec3 center) {
+        this.awaitingManualRelease = false;
+        this.releaseRequested = false;
         if (this.mode != ShadowHandMode.THROW) {
             this.holdDistance = 0.0D;
             this.previousHoldPosition = Vec3.ZERO;
@@ -396,6 +422,54 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         this.previousHoldPosition = center;
         this.lastHoldPosition = center;
         this.hasHoldPosition = true;
+    }
+
+    private void enableManualReleasePhase() {
+        if (this.mode != ShadowHandMode.THROW) {
+            return;
+        }
+        this.awaitingManualRelease = true;
+        this.releaseRequested = false;
+        this.life = Math.max(this.life, 1);
+        this.entityData.set(LIFE_TICKS, Math.max(this.life, 1));
+    }
+
+    public void requestManualRelease() {
+        if (this.mode == ShadowHandMode.THROW) {
+            this.releaseRequested = true;
+        }
+    }
+
+    public boolean isAwaitingManualRelease() {
+        return this.awaitingManualRelease;
+    }
+
+    public boolean isOwnedBy(@Nullable LivingEntity owner) {
+        return owner != null && this.ownerUuid != null && owner.getUUID().equals(this.ownerUuid);
+    }
+
+    public boolean isHoldingTarget(@Nullable LivingEntity target) {
+        return target != null && this.targetUuid != null && target.getUUID().equals(this.targetUuid);
+    }
+
+    public void enablePlayerReleaseControl() {
+        enableManualReleasePhase();
+    }
+
+    @Nullable
+    public static HandGrabEntity findActive(ServerLevel level, LivingEntity owner, LivingEntity target) {
+        return level.getEntitiesOfClass(HandGrabEntity.class, target.getBoundingBox().inflate(3.0D),
+                entity -> entity.isOwnedBy(owner) && entity.isHoldingTarget(target)).stream().findFirst().orElse(null);
+    }
+
+    @Nullable
+    public static HandGrabEntity findAwaitingThrow(ServerLevel level, LivingEntity owner) {
+        return level.getEntitiesOfClass(HandGrabEntity.class, owner.getBoundingBox().inflate(32.0D),
+                entity -> entity.isOwnedBy(owner) && entity.getMode() == ShadowHandMode.THROW)
+                .stream()
+                .filter(HandGrabEntity::isAwaitingManualRelease)
+                .findFirst()
+                .orElse(null);
     }
 
     private Vec3 updateHoldPosition(LivingEntity target) {
