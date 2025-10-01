@@ -1,0 +1,30 @@
+package Vfx.vfx;
+
+import Vfx.vfx.entity.shadow.ShadowHandEntity;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.MobCategory;
+import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.registries.DeferredRegister;
+import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraftforge.registries.RegistryObject;
+
+public final class VfxEntities {
+    private VfxEntities() {
+    }
+
+    public static final DeferredRegister<EntityType<?>> ENTITY_TYPES =
+            DeferredRegister.create(ForgeRegistries.ENTITY_TYPES, Vfx.MODID);
+
+    public static final RegistryObject<EntityType<ShadowHandEntity>> SHADOW_HAND = ENTITY_TYPES.register(
+            "shadow_hand",
+            () -> EntityType.Builder.<ShadowHandEntity>of(ShadowHandEntity::new, MobCategory.MISC)
+                    .sized(1.5F, 2.5F)
+                    .clientTrackingRange(16)
+                    .updateInterval(1)
+                    .build("shadow_hand")
+    );
+
+    public static void register(IEventBus eventBus) {
+        ENTITY_TYPES.register(eventBus);
+    }
+}

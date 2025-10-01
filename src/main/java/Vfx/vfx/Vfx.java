@@ -3,12 +3,15 @@ package Vfx.vfx;
 import com.mojang.logging.LogUtils;
 import Vfx.vfx.client.gui.ShadowSelectionScreen;
 import Vfx.vfx.client.particle.ShadowDomainParticle;
+import Vfx.vfx.client.render.ShadowHandRenderer;
 import Vfx.vfx.item.DarknessRelicItem;
 import Vfx.vfx.item.DomainOfShadowsRelicItem;
 import Vfx.vfx.item.ShadowCollectorItem;
+import Vfx.vfx.item.ShadowHandRelicItem;
 import Vfx.vfx.item.UmbralLensItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.client.renderer.entity.EntityRenderers;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.food.FoodProperties;
 import Vfx.vfx.menu.ShadowSelectionMenu;
@@ -69,6 +72,7 @@ public class Vfx {
     public static final RegistryObject<Item> SHADOW_COLLECTOR = ITEMS.register("shadow_collector", () -> new ShadowCollectorItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> DOMAIN_OF_SHADOWS_RELIC = ITEMS.register("domain_of_shadows_relic", () -> new DomainOfShadowsRelicItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> UMBRAL_LENS = ITEMS.register("umbral_lens", () -> new UmbralLensItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> SHADOW_HAND_RELIC = ITEMS.register("shadow_hand_relic", () -> new ShadowHandRelicItem(new Item.Properties().stacksTo(1)));
 
     public static final RegistryObject<MenuType<ShadowSelectionMenu>> SHADOW_SELECTION_MENU = MENUS.register(
             "shadow_selection",
@@ -94,6 +98,7 @@ public class Vfx {
         CREATIVE_MODE_TABS.register(modEventBus);
         MENUS.register(modEventBus);
         VfxParticles.register(modEventBus);
+        VfxEntities.register(modEventBus);
 
         // Register ourselves for server and other game events we are interested in
         MinecraftForge.EVENT_BUS.register(this);
@@ -128,6 +133,7 @@ public class Vfx {
             event.accept(SHADOW_COLLECTOR);
             event.accept(DOMAIN_OF_SHADOWS_RELIC);
             event.accept(UMBRAL_LENS);
+            event.accept(SHADOW_HAND_RELIC);
         }
     }
 
@@ -149,6 +155,7 @@ public class Vfx {
             LOGGER.info("MINECRAFT NAME >> {}", Minecraft.getInstance().getUser().getName());
 
             MenuScreens.register(Vfx.SHADOW_SELECTION_MENU.get(), ShadowSelectionScreen::new);
+            EntityRenderers.register(VfxEntities.SHADOW_HAND.get(), ShadowHandRenderer::new);
         }
 
         @SubscribeEvent
