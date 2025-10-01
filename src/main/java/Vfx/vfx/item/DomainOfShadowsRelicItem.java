@@ -12,7 +12,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 
 public class DomainOfShadowsRelicItem extends Item {
-    private static final int DOMAIN_RADIUS = 25;
+    private static final int BEAM_LENGTH = 25;
     private static final int DOMAIN_DURATION_TICKS = 20 * 30; // 30 seconds
 
     public DomainOfShadowsRelicItem(Properties properties) {
@@ -42,7 +42,7 @@ public class DomainOfShadowsRelicItem extends Item {
         }
 
         BlockPos center = serverPlayer.blockPosition();
-        manager.activateDomain(serverPlayer, center, DOMAIN_RADIUS, DOMAIN_DURATION_TICKS);
+        manager.activateDomain(serverPlayer, center, BEAM_LENGTH, DOMAIN_DURATION_TICKS);
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
     }
 }

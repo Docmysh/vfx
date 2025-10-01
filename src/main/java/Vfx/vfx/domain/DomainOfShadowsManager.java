@@ -9,11 +9,11 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
-import net.minecraft.world.entity.AreaEffectCloud;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.util.Mth;
 import net.minecraftforge.event.TickEvent;
 import net.minecraftforge.event.level.LevelEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
@@ -47,7 +47,9 @@ public class DomainOfShadowsManager {
     public void activateDomain(ServerPlayer owner, BlockPos center, int radius, int durationTicks) {
         deactivateDomain(owner, false);
 
-        ShadowDomain domain = new ShadowDomain(level, owner.getUUID(), center, radius, durationTicks);
+        Vec3 origin = owner.getEyePosition();
+        Vec3 direction = owner.getLookAngle();
+        ShadowDomain domain = new ShadowDomain(level, owner.getUUID(), origin, direction, radius, durationTicks);
         domain.apply();
         activeDomains.put(owner.getUUID(), domain);
     }
@@ -138,32 +140,45 @@ public class DomainOfShadowsManager {
         private static final int EFFECT_REFRESH_INTERVAL_TICKS = 10;
         private static final int MIN_EFFECT_DURATION_TICKS = 80;
         private static final int MAX_EFFECT_DURATION_TICKS = 200;
-        private static final float RADIUS_PADDING = 1.0F;
+        private static final double POSITION_TOLERANCE = 0.5D;
 
         private final ServerLevel level;
-        private final BlockPos center;
+        private final Vec3 origin;
+        private final Vec3 direction;
+        private final Vec3 endPoint;
         private final UUID ownerId;
-        private final int radius;
+        private final double beamHalfWidth;
+        private final double length;
         private long expiryGameTime;
         private final int durationTicks;
         private final AABB bounds;
         private int ticksActive;
         private boolean expired;
 
-        private ShadowDomain(ServerLevel level, UUID ownerId, BlockPos center, int radius, int durationTicks) {
+        private ShadowDomain(ServerLevel level, UUID ownerId, Vec3 origin, Vec3 direction, int length, int durationTicks) {
             this.level = level;
             this.ownerId = ownerId;
-            this.center = center;
-            this.radius = Math.max(1, radius);
+            Vec3 normalizedDirection = direction.lengthSqr() < 1.0E-4D
+                    ? new Vec3(0.0D, 0.0D, 1.0D)
+                    : direction.normalize();
+            this.origin = origin;
+            this.direction = normalizedDirection;
+            this.length = Math.max(1, length);
+            this.beamHalfWidth = Mth.clamp(this.length / 8.0D, 1.5D, 4.0D);
+            this.endPoint = this.origin.add(this.direction.scale(this.length));
             this.expiryGameTime = level.getGameTime() + durationTicks;
             this.durationTicks = durationTicks;
-            Vec3 min = new Vec3(center.getX() - radius, Math.max(level.getMinBuildHeight(), center.getY() - radius), center.getZ() - radius);
-            Vec3 max = new Vec3(center.getX() + radius + 1, Math.min(level.getMaxBuildHeight(), center.getY() + radius + 1), center.getZ() + radius + 1);
-            this.bounds = new AABB(min, max);
+            double minX = Math.min(origin.x, endPoint.x);
+            double minY = Math.min(origin.y, endPoint.y);
+            double minZ = Math.min(origin.z, endPoint.z);
+            double maxX = Math.max(origin.x, endPoint.x);
+            double maxY = Math.max(origin.y, endPoint.y);
+            double maxZ = Math.max(origin.z, endPoint.z);
+            this.bounds = new AABB(minX, minY, minZ, maxX, maxY, maxZ)
+                    .inflate(this.beamHalfWidth, this.beamHalfWidth + 1.5D, this.beamHalfWidth);
         }
 
         private void apply() {
-            spawnDarknessCloud();
             spawnDomainTexture();
             applyDarknessEffect();
         }
@@ -199,10 +214,21 @@ public class DomainOfShadowsManager {
         }
 
         private boolean containsPosition(BlockPos pos) {
-            double dx = pos.getX() + 0.5 - (center.getX() + 0.5);
-            double dy = pos.getY() + 0.5 - (center.getY() + 0.5);
-            double dz = pos.getZ() + 0.5 - (center.getZ() + 0.5);
-            return dx * dx + dy * dy + dz * dz <= radius * radius;
+            return containsPoint(Vec3.atCenterOf(pos));
+        }
+
+        private boolean containsPoint(Vec3 point) {
+            Vec3 toPoint = point.subtract(origin);
+            double projection = toPoint.dot(direction);
+            if (projection < -POSITION_TOLERANCE || projection > length + POSITION_TOLERANCE) {
+                return false;
+            }
+
+            double clampedProjection = Mth.clamp(projection, 0.0D, length);
+            Vec3 closestPoint = origin.add(direction.scale(clampedProjection));
+            double allowed = beamHalfWidth + 0.5D;
+            double distanceSq = point.distanceToSqr(closestPoint);
+            return distanceSq <= allowed * allowed;
         }
 
         private void spawnDomainTexture() {
@@ -214,9 +240,9 @@ public class DomainOfShadowsManager {
             int textureLifetime = remainingLifetime <= TEXTURE_REFRESH_INTERVAL_TICKS
                     ? remainingLifetime
                     : Math.min(remainingLifetime, MAX_TEXTURE_LIFETIME_TICKS);
-            float visualRadius = Math.max(radius + RADIUS_PADDING, 1.0F);
-            ShadowDomainParticleOptions options = VfxParticles.domainOptions(visualRadius, textureLifetime);
-            level.sendParticles(options, center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5, 1, 0.0, 0.0, 0.0, 0.0);
+            float visualRadius = (float) Math.max(beamHalfWidth, 1.0D);
+            ShadowDomainParticleOptions options = VfxParticles.domainOptions(visualRadius, (float) length, direction, textureLifetime);
+            level.sendParticles(options, origin.x, origin.y, origin.z, 1, 0.0, 0.0, 0.0, 0.0);
         }
 
         private void applyCooldown() {
@@ -226,21 +252,12 @@ public class DomainOfShadowsManager {
             }
         }
 
-        private void spawnDarknessCloud() {
-            AreaEffectCloud cloud = new AreaEffectCloud(level, center.getX() + 0.5, center.getY() + 1, center.getZ() + 0.5);
-            cloud.setRadius(Math.max(radius, 1));
-            cloud.setDuration(1);
-            cloud.setWaitTime(0);
-            cloud.setRadiusPerTick(0);
-            cloud.addEffect(new MobEffectInstance(MobEffects.DARKNESS, Math.max(durationTicks, 1)));
-            level.addFreshEntity(cloud);
-        }
-
         private void applyDarknessEffect() {
             int effectDuration = Math.max(MIN_EFFECT_DURATION_TICKS, Math.min(durationTicks, MAX_EFFECT_DURATION_TICKS));
             effectDuration = Math.max(effectDuration, EFFECT_REFRESH_INTERVAL_TICKS * 3);
             for (ServerPlayer player : level.getEntitiesOfClass(ServerPlayer.class, bounds, p -> !p.isSpectator())) {
-                if (!containsPosition(player.blockPosition())) {
+                Vec3 playerCenter = player.position().add(0.0D, player.getBbHeight() * 0.5D, 0.0D);
+                if (!containsPoint(playerCenter)) {
                     continue;
                 }
                 MobEffectInstance existing = player.getEffect(MobEffects.DARKNESS);
@@ -250,4 +267,5 @@ public class DomainOfShadowsManager {
             }
         }
     }
+
 }
