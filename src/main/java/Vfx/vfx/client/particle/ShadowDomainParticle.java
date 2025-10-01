@@ -1,29 +1,38 @@
 package Vfx.vfx.client.particle;
 
-import Vfx.vfx.VfxParticles;
 import Vfx.vfx.particle.ShadowDomainParticleOptions;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.particle.NoRenderParticle;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleProvider;
 import net.minecraft.client.particle.SpriteSet;
+import net.minecraft.client.particle.TextureSheetParticle;
+import net.minecraft.client.particle.ParticleRenderType;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec3;
 
-public class ShadowDomainParticle extends NoRenderParticle {
+public class ShadowDomainParticle extends TextureSheetParticle {
     private static final float MIN_RADIUS = 0.5F;
     private static final float MIN_LENGTH = 1.0F;
-    private static final float DOT_SPACING = 0.85F;
-    private static final float RANDOM_OFFSET = 0.12F;
+    private static final float INNER_SCALE = 0.55F;
+    private static final float DIAGONAL_SCALE = 0.75F;
+    private static final float PULSE_SPEED = 0.12F;
+    private static final float MIN_ALPHA = 0.25F;
+
+    private final SpriteSet sprites;
 
     private final float radius;
     private final float length;
     private final Vec3 direction;
     private final Vec3 right;
     private final Vec3 up;
+    private final Vec3[] beamAxes;
 
-    private ShadowDomainParticle(ClientLevel level, double x, double y, double z, ShadowDomainParticleOptions options) {
+    private ShadowDomainParticle(ClientLevel level, double x, double y, double z,
+                                 ShadowDomainParticleOptions options, SpriteSet sprites) {
         super(level, x, y, z, 0.0D, 0.0D, 0.0D);
+        this.sprites = sprites;
         this.radius = Math.max(options.radius(), MIN_RADIUS);
         this.length = Math.max(options.length(), MIN_LENGTH);
         Vec3 normalizedDirection = new Vec3(options.directionX(), options.directionY(), options.directionZ());
@@ -47,66 +56,121 @@ public class ShadowDomainParticle extends NoRenderParticle {
             computedUp = computedUp.normalize();
         }
         this.up = computedUp;
+        this.beamAxes = new Vec3[] {
+                this.right,
+                this.up,
+                this.right.add(this.up).normalize(),
+                this.right.subtract(this.up).normalize()
+        };
         this.gravity = 0.0F;
         this.hasPhysics = false;
         this.lifetime = Math.max(options.lifetime(), 1);
-        spawnBeam();
+        this.setSpriteFromAge(this.sprites);
+        this.setColor(0.05F, 0.0F, 0.08F);
+        this.setAlpha(0.9F);
     }
 
     @Override
     public void tick() {
-        if (this.age++ >= this.lifetime) {
-            this.remove();
+        super.tick();
+        if (!this.removed && this.lifetime > 0) {
+            float progress = (float) this.age / (float) this.lifetime;
+            float fade = 1.0F - progress;
+            float pulse = 0.85F + 0.15F * Mth.sin((this.age + 0.5F) * PULSE_SPEED * Mth.TWO_PI);
+            this.setAlpha(Mth.clamp(fade * pulse, MIN_ALPHA, 1.0F));
+            this.setSpriteFromAge(this.sprites);
         }
     }
 
-    private void spawnBeam() {
-        Vec3 start = new Vec3(this.x, this.y, this.z);
-        int segments = Math.max(3, Mth.ceil(this.length / DOT_SPACING));
-        for (int segment = 0; segment <= segments; ++segment) {
-            float progress = (float) segment / (float) segments;
-            Vec3 center = start.add(this.direction.scale(progress * this.length));
-            spawnRing(center, this.radius);
-        }
-    }
-
-    private void spawnRing(Vec3 center, float ringRadius) {
-        if (ringRadius <= 0.05F) {
-            this.level.addParticle(VfxParticles.SHADOW_DOT.get(), center.x, center.y, center.z, 0.0D, 0.0D, 0.0D);
+    @Override
+    public void render(VertexConsumer buffer, Camera camera, float partialTicks) {
+        if (this.alpha <= 0.0F) {
             return;
         }
 
-        float circumference = (float) (Mth.TWO_PI * ringRadius);
-        int points = Math.max(8, Mth.ceil(circumference / DOT_SPACING));
-        for (int i = 0; i < points; ++i) {
-            float baseAngle = (float) i / (float) points * Mth.TWO_PI;
-            float jitter = (this.random.nextFloat() - 0.5F) * (Mth.TWO_PI / points) * RANDOM_OFFSET;
-            float angle = baseAngle + jitter;
-            double cos = Mth.cos(angle);
-            double sin = Mth.sin(angle);
-            Vec3 radialOffset = this.right.scale(ringRadius * cos).add(this.up.scale(ringRadius * sin));
-            double jitterAlong = (this.random.nextFloat() - 0.5D) * RANDOM_OFFSET;
-            Vec3 jitterVector = this.direction.scale(jitterAlong);
-            Vec3 position = center.add(radialOffset).add(jitterVector);
-            this.level.addParticle(
-                    VfxParticles.SHADOW_DOT.get(),
-                    position.x,
-                    position.y,
-                    position.z,
-                    0.0D,
-                    0.0D,
-                    0.0D
-            );
+        Vec3 cameraPos = camera.getPosition();
+        Vec3 start = this.getPosition(partialTicks).subtract(cameraPos);
+        Vec3 end = start.add(this.direction.scale(this.length));
+        int light = this.getLightColor(partialTicks);
+        float baseRadius = getCurrentRadius(partialTicks);
+        float innerRadius = baseRadius * INNER_SCALE;
+        float diagonalRadius = baseRadius * DIAGONAL_SCALE;
+        float u0 = this.getU0();
+        float u1 = this.getU1();
+        float v0 = this.getV0();
+        float v1 = this.getV1();
+
+        for (Vec3 axis : this.beamAxes) {
+            float radiusScale = axis == this.right || axis == this.up ? baseRadius : diagonalRadius;
+            renderStrip(buffer, start, end, axis.scale(radiusScale), u0, u1, v0, v1, light);
+        }
+
+        for (Vec3 axis : this.beamAxes) {
+            renderStrip(buffer, start, end, axis.scale(innerRadius), u0, u1, v0, v1, light);
         }
     }
 
+    @Override
+    public ParticleRenderType getRenderType() {
+        return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;
+    }
+
+    private float getCurrentRadius(float partialTicks) {
+        float progress = ((float) this.age + partialTicks) / (float) this.lifetime;
+        progress = Mth.clamp(progress, 0.0F, 1.0F);
+        float pulse = 0.9F + 0.1F * Mth.sin((this.age + partialTicks) * PULSE_SPEED * Mth.TWO_PI);
+        return this.radius * (0.85F + (1.0F - progress) * 0.15F) * pulse;
+    }
+
+    private void renderStrip(VertexConsumer buffer, Vec3 start, Vec3 end, Vec3 offset,
+                              float u0, float u1, float v0, float v1, int light) {
+        if (offset.lengthSqr() < 1.0E-6D) {
+            return;
+        }
+
+        Vec3 offsetScaled = offset;
+        Vec3 startA = start.subtract(offsetScaled);
+        Vec3 startB = start.add(offsetScaled);
+        Vec3 endB = end.add(offsetScaled);
+        Vec3 endA = end.subtract(offsetScaled);
+
+        float r = this.rCol;
+        float g = this.gCol;
+        float b = this.bCol;
+        float a = this.alpha;
+
+        buffer.vertex(startA.x, startA.y, startA.z)
+                .uv(u1, v0)
+                .color(r, g, b, a)
+                .uv2(light)
+                .endVertex();
+        buffer.vertex(startB.x, startB.y, startB.z)
+                .uv(u0, v0)
+                .color(r, g, b, a)
+                .uv2(light)
+                .endVertex();
+        buffer.vertex(endB.x, endB.y, endB.z)
+                .uv(u0, v1)
+                .color(r, g, b, a)
+                .uv2(light)
+                .endVertex();
+        buffer.vertex(endA.x, endA.y, endA.z)
+                .uv(u1, v1)
+                .color(r, g, b, a)
+                .uv2(light)
+                .endVertex();
+    }
+
     public static class Provider implements ParticleProvider<ShadowDomainParticleOptions> {
+        private final SpriteSet sprites;
+
         public Provider(SpriteSet sprite) {
+            this.sprites = sprite;
         }
 
         @Override
         public Particle createParticle(ShadowDomainParticleOptions options, ClientLevel level, double x, double y, double z, double xd, double yd, double zd) {
-            return new ShadowDomainParticle(level, x, y, z, options);
+            return new ShadowDomainParticle(level, x, y, z, options, this.sprites);
         }
     }
 }
