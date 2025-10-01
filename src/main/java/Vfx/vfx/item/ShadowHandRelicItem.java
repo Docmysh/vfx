@@ -20,8 +20,6 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 public class ShadowHandRelicItem extends Item {
-    private static final int COOLDOWN_TICKS = 20 * 25;
-
     public ShadowHandRelicItem(Properties properties) {
         super(properties);
     }
@@ -42,9 +40,6 @@ public class ShadowHandRelicItem extends Item {
         if (target.isDeadOrDying()) {
             return InteractionResult.PASS;
         }
-        if (player.getCooldowns().isOnCooldown(this)) {
-            return InteractionResult.FAIL;
-        }
         if (ShadowHandEntity.hasActiveHand(target.level(), target)) {
             return InteractionResult.FAIL;
         }
@@ -61,7 +56,6 @@ public class ShadowHandRelicItem extends Item {
         serverLevel.addFreshEntity(handEntity);
 
         HandGrabEntity.spawn(serverLevel, serverPlayer, target, 1.0F, 40);
-        player.getCooldowns().addCooldown(this, COOLDOWN_TICKS);
         player.swing(hand, true);
         return InteractionResult.SUCCESS;
     }
