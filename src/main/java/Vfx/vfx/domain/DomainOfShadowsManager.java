@@ -27,6 +27,7 @@ import java.util.UUID;
 @Mod.EventBusSubscriber(modid = Vfx.MODID)
 public class DomainOfShadowsManager {
     private static final Map<ResourceKey<Level>, DomainOfShadowsManager> MANAGERS = new HashMap<>();
+    private static int cooldownReductionTicks = 0;
 
     public static DomainOfShadowsManager get(ServerLevel level) {
         return MANAGERS.compute(level.dimension(), (dimension, existing) -> {
@@ -35,6 +36,14 @@ public class DomainOfShadowsManager {
             }
             return existing;
         });
+    }
+
+    public static int getCooldownReductionTicks() {
+        return cooldownReductionTicks;
+    }
+
+    public static void setCooldownReductionTicks(int reductionTicks) {
+        cooldownReductionTicks = Math.max(0, reductionTicks);
     }
 
     private final ServerLevel level;
@@ -248,7 +257,8 @@ public class DomainOfShadowsManager {
         private void applyCooldown() {
             Player owner = level.getPlayerByUUID(ownerId);
             if (owner != null) {
-                owner.getCooldowns().addCooldown(Vfx.DOMAIN_OF_SHADOWS_RELIC.get(), durationTicks);
+                int cooldown = Math.max(0, durationTicks - DomainOfShadowsManager.getCooldownReductionTicks());
+                owner.getCooldowns().addCooldown(Vfx.DOMAIN_OF_SHADOWS_RELIC.get(), cooldown);
             }
         }
 

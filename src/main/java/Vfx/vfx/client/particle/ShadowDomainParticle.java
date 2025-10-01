@@ -10,6 +10,7 @@ import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.client.particle.TextureSheetParticle;
 import net.minecraft.client.particle.ParticleRenderType;
 import net.minecraft.util.Mth;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 
 public class ShadowDomainParticle extends TextureSheetParticle {
@@ -28,6 +29,7 @@ public class ShadowDomainParticle extends TextureSheetParticle {
     private final Vec3 right;
     private final Vec3 up;
     private final Vec3[] beamAxes;
+    private final AABB renderBoundingBox;
 
     private ShadowDomainParticle(ClientLevel level, double x, double y, double z,
                                  ShadowDomainParticleOptions options, SpriteSet sprites) {
@@ -68,6 +70,17 @@ public class ShadowDomainParticle extends TextureSheetParticle {
         this.setSpriteFromAge(this.sprites);
         this.setColor(0.05F, 0.0F, 0.08F);
         this.setAlpha(0.9F);
+
+        Vec3 start = new Vec3(x, y, z);
+        Vec3 end = start.add(this.direction.scale(this.length));
+        double minX = Math.min(start.x, end.x);
+        double minY = Math.min(start.y, end.y);
+        double minZ = Math.min(start.z, end.z);
+        double maxX = Math.max(start.x, end.x);
+        double maxY = Math.max(start.y, end.y);
+        double maxZ = Math.max(start.z, end.z);
+        double padding = this.radius * 2.0F;
+        this.renderBoundingBox = new AABB(minX, minY, minZ, maxX, maxY, maxZ).inflate(padding);
     }
 
     @Override
@@ -118,6 +131,16 @@ public class ShadowDomainParticle extends TextureSheetParticle {
     @Override
     public ParticleRenderType getRenderType() {
         return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;
+    }
+
+    @Override
+    public AABB getRenderBoundingBox() {
+        return this.renderBoundingBox;
+    }
+
+    @Override
+    public boolean shouldCull() {
+        return false;
     }
 
     private float getCurrentRadius(float partialTicks) {
