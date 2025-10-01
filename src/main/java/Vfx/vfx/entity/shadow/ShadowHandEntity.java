@@ -1,6 +1,6 @@
 package Vfx.vfx.entity.shadow;
 
-import net.minecraft.client.animation.AnimationState;
+import net.minecraft.world.entity.AnimationState;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
