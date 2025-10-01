@@ -422,10 +422,12 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         this.previousHoldPosition = center;
         this.lastHoldPosition = center;
         this.hasHoldPosition = true;
+
+        enableManualReleasePhase();
     }
 
     private void enableManualReleasePhase() {
-        if (this.mode != ShadowHandMode.THROW) {
+        if (this.mode != ShadowHandMode.THROW || this.awaitingManualRelease) {
             return;
         }
         this.awaitingManualRelease = true;
