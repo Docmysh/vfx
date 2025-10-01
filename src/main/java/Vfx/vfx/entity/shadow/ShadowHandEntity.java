@@ -1,6 +1,5 @@
 package Vfx.vfx.entity.shadow;
 
-import net.minecraft.world.entity.AnimationState;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
@@ -13,6 +12,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.entity.AnimationState;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -33,10 +33,13 @@ public class ShadowHandEntity extends Entity {
     private static final String TAG_CRUSHED = "Crushed";
     private static final String TAG_TARGET = "Target";
     private static final String TAG_OWNER = "Owner";
+    private static final String TAG_MODE = "Mode";
     private static final EntityDataAccessor<Optional<UUID>> TARGET_UUID =
             SynchedEntityData.defineId(ShadowHandEntity.class, EntityDataSerializers.OPTIONAL_UUID);
     private static final EntityDataAccessor<Optional<UUID>> OWNER_UUID =
             SynchedEntityData.defineId(ShadowHandEntity.class, EntityDataSerializers.OPTIONAL_UUID);
+    private static final EntityDataAccessor<Integer> MODE =
+            SynchedEntityData.defineId(ShadowHandEntity.class, EntityDataSerializers.INT);
     private static final int APPEAR_TICKS = 20;
     private static final int GRASP_TICKS = 40;
 
@@ -44,6 +47,7 @@ public class ShadowHandEntity extends Entity {
     private boolean crushedTarget;
     private LivingEntity cachedTarget;
     private Entity cachedOwner;
+    private ShadowHandMode mode = ShadowHandMode.CRUSH;
 
     @OnlyIn(Dist.CLIENT)
     private final AnimationState appearAnimationState = new AnimationState();
@@ -60,6 +64,15 @@ public class ShadowHandEntity extends Entity {
     protected void defineSynchedData() {
         this.entityData.define(TARGET_UUID, Optional.empty());
         this.entityData.define(OWNER_UUID, Optional.empty());
+        this.entityData.define(MODE, ShadowHandMode.CRUSH.getId());
+    }
+
+    @Override
+    public void onSyncedDataUpdated(EntityDataAccessor<?> key) {
+        super.onSyncedDataUpdated(key);
+        if (key.equals(MODE)) {
+            this.mode = ShadowHandMode.byId(this.entityData.get(MODE));
+        }
     }
 
     @Override
@@ -73,6 +86,9 @@ public class ShadowHandEntity extends Entity {
         this.tickCount = tag.getInt(TAG_TICK_COUNT);
         this.appliedGrasp = tag.getBoolean(TAG_GRASPED);
         this.crushedTarget = tag.getBoolean(TAG_CRUSHED);
+        if (tag.contains(TAG_MODE)) {
+            setMode(ShadowHandMode.byId(tag.getInt(TAG_MODE)));
+        }
     }
 
     @Override
@@ -82,6 +98,7 @@ public class ShadowHandEntity extends Entity {
         tag.putInt(TAG_TICK_COUNT, this.tickCount);
         tag.putBoolean(TAG_GRASPED, this.appliedGrasp);
         tag.putBoolean(TAG_CRUSHED, this.crushedTarget);
+        tag.putInt(TAG_MODE, getMode().getId());
     }
 
     @Override
@@ -103,13 +120,18 @@ public class ShadowHandEntity extends Entity {
             return;
         }
 
+        ShadowHandMode currentMode = getMode();
         if (!this.appliedGrasp && this.tickCount >= APPEAR_TICKS) {
-            applyGrasp(target);
+            applyGrasp(target, currentMode);
             this.appliedGrasp = true;
         }
 
         if (!this.crushedTarget && this.tickCount >= APPEAR_TICKS + GRASP_TICKS) {
-            crushTarget(target);
+            if (currentMode == ShadowHandMode.THROW) {
+                throwTarget(target);
+            } else {
+                crushTarget(target);
+            }
             this.crushedTarget = true;
             this.discard();
         }
@@ -132,11 +154,15 @@ public class ShadowHandEntity extends Entity {
         }
     }
 
-    private void applyGrasp(LivingEntity target) {
+    private void applyGrasp(LivingEntity target, ShadowHandMode currentMode) {
         target.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, GRASP_TICKS + 20, 6, false, false, true));
-        target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, GRASP_TICKS + 20, 2, false, false, true));
+        if (currentMode == ShadowHandMode.CRUSH) {
+            target.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, GRASP_TICKS + 20, 2, false, false, true));
+        }
         target.setDeltaMovement(Vec3.ZERO);
         target.hurtMarked = true;
+        target.hasImpulse = true;
+        target.fallDistance = 0.0F;
     }
 
     private void crushTarget(LivingEntity target) {
@@ -146,6 +172,29 @@ public class ShadowHandEntity extends Entity {
         if (target.isAlive()) {
             target.kill();
         }
+    }
+
+    private void throwTarget(LivingEntity target) {
+        Vec3 direction = getThrowDirection();
+        double horizontalScale = 1.6D;
+        Vec3 velocity = new Vec3(direction.x * horizontalScale,
+                Math.max(direction.y + 0.6D, 0.7D),
+                direction.z * horizontalScale);
+        target.setDeltaMovement(velocity);
+        target.hasImpulse = true;
+        target.hurtMarked = true;
+        target.fallDistance = 0.0F;
+    }
+
+    private Vec3 getThrowDirection() {
+        Entity owner = getOwner();
+        if (owner instanceof LivingEntity livingEntity) {
+            Vec3 lookAngle = livingEntity.getLookAngle();
+            if (lookAngle.lengthSqr() > 1.0E-4D) {
+                return lookAngle.normalize();
+            }
+        }
+        return new Vec3(0.0D, 1.0D, 0.0D);
     }
 
     private DamageSource createDamageSource() {
@@ -219,6 +268,18 @@ public class ShadowHandEntity extends Entity {
         this.entityData.set(OWNER_UUID, Optional.ofNullable(owner != null ? owner.getUUID() : null));
     }
 
+    public void setMode(ShadowHandMode mode) {
+        this.mode = mode;
+        this.entityData.set(MODE, mode.getId());
+    }
+
+    public ShadowHandMode getMode() {
+        if (level().isClientSide) {
+            this.mode = ShadowHandMode.byId(this.entityData.get(MODE));
+        }
+        return this.mode;
+    }
+
     public boolean isTracking(LivingEntity potentialTarget) {
         Optional<UUID> id = this.entityData.get(TARGET_UUID);
         return id.isPresent() && id.get().equals(potentialTarget.getUUID());
@@ -277,5 +338,17 @@ public class ShadowHandEntity extends Entity {
     public static boolean hasActiveHand(Level level, LivingEntity target) {
         return !level.getEntitiesOfClass(ShadowHandEntity.class, target.getBoundingBox().inflate(2.0D),
                 entity -> entity.isTracking(target)).isEmpty();
+    }
+
+    public static int getAppearTicks() {
+        return APPEAR_TICKS;
+    }
+
+    public static int getGraspTicks() {
+        return GRASP_TICKS;
+    }
+
+    public static int getTotalAnimationTicks() {
+        return APPEAR_TICKS + GRASP_TICKS;
     }
 }

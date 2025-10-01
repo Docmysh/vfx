@@ -31,7 +31,7 @@ public class ShadowHandRenderer extends EntityRenderer<ShadowHandEntity> {
         float yaw = Mth.lerp(partialTick, entity.yRotO, entity.getYRot());
         poseStack.mulPose(Axis.YP.rotationDegrees(yaw));
         poseStack.mulPose(Axis.XP.rotationDegrees(180.0F));
-        poseStack.scale(1.75F, 1.75F, 1.75F);
+        poseStack.scale(100F, 100F, 100F);
 
         this.model.setupAnim(entity, 0.0F, 0.0F, entity.tickCount + partialTick, 0.0F, 0.0F);
         this.model.renderToBuffer(poseStack, buffer.getBuffer(RenderType.entityTranslucent(getTextureLocation(entity))), packedLight,

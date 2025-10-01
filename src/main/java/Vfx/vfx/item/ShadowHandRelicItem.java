@@ -3,6 +3,7 @@ package Vfx.vfx.item;
 import Vfx.vfx.VfxEntities;
 import Vfx.vfx.entity.HandGrabEntity;
 import Vfx.vfx.entity.shadow.ShadowHandEntity;
+import Vfx.vfx.entity.shadow.ShadowHandMode;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,6 +21,8 @@ import javax.annotation.Nullable;
 import java.util.List;
 
 public class ShadowHandRelicItem extends Item {
+    private static final String TAG_MODE = "Mode";
+
     public ShadowHandRelicItem(Properties properties) {
         super(properties);
     }
@@ -27,6 +30,8 @@ public class ShadowHandRelicItem extends Item {
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         tooltip.add(Component.translatable("tooltip.vfx.shadow_hand_relic"));
+        tooltip.add(Component.translatable("tooltip.vfx.shadow_hand_relic.mode",
+                getMode(stack).getDisplayName()));
     }
 
     @Override
@@ -50,12 +55,15 @@ public class ShadowHandRelicItem extends Item {
             return InteractionResult.FAIL;
         }
 
+        ShadowHandMode mode = getMode(stack);
         handEntity.moveTo(target.getX(), target.getY(), target.getZ());
         handEntity.setTarget(target);
         handEntity.setOwner(serverPlayer);
+        handEntity.setMode(mode);
         serverLevel.addFreshEntity(handEntity);
 
-        HandGrabEntity.spawn(serverLevel, serverPlayer, target, 1.0F, 40);
+        int duration = mode == ShadowHandMode.THROW ? ShadowHandEntity.getTotalAnimationTicks() : ShadowHandEntity.getGraspTicks();
+        HandGrabEntity.spawn(serverLevel, serverPlayer, target, 1.0F, duration, mode);
         player.swing(hand, true);
         return InteractionResult.SUCCESS;
     }
@@ -63,6 +71,26 @@ public class ShadowHandRelicItem extends Item {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack stack = player.getItemInHand(hand);
+        if (player.isShiftKeyDown()) {
+            if (!level.isClientSide) {
+                ShadowHandMode mode = getMode(stack).cycle();
+                setMode(stack, mode);
+                player.displayClientMessage(Component.translatable("message.vfx.shadow_hand_relic.mode",
+                        mode.getDisplayName()), true);
+            }
+            return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
+        }
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide);
+    }
+
+    private ShadowHandMode getMode(ItemStack stack) {
+        if (stack.hasTag() && stack.getTag().contains(TAG_MODE)) {
+            return ShadowHandMode.byId(stack.getTag().getInt(TAG_MODE));
+        }
+        return ShadowHandMode.CRUSH;
+    }
+
+    private void setMode(ItemStack stack, ShadowHandMode mode) {
+        stack.getOrCreateTag().putInt(TAG_MODE, mode.getId());
     }
 }

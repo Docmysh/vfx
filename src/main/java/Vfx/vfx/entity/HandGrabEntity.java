@@ -1,6 +1,7 @@
 package Vfx.vfx.entity;
 
 import Vfx.vfx.VfxEntities;
+import Vfx.vfx.entity.shadow.ShadowHandMode;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
@@ -34,6 +35,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     private static final String TAG_TARGET = "Target";
     private static final String TAG_LIFE = "Life";
     private static final String TAG_STRENGTH = "Strength";
+    private static final String TAG_MODE = "Mode";
 
     private static final EntityDataAccessor<Optional<UUID>> OWNER_UUID =
             SynchedEntityData.defineId(HandGrabEntity.class, EntityDataSerializers.OPTIONAL_UUID);
@@ -45,6 +47,8 @@ public class HandGrabEntity extends Entity implements GeoEntity {
             SynchedEntityData.defineId(HandGrabEntity.class, EntityDataSerializers.INT);
     private static final EntityDataAccessor<Integer> TARGET_ID =
             SynchedEntityData.defineId(HandGrabEntity.class, EntityDataSerializers.INT);
+    private static final EntityDataAccessor<Integer> MODE =
+            SynchedEntityData.defineId(HandGrabEntity.class, EntityDataSerializers.INT);
 
     @Nullable
     private UUID ownerUuid;
@@ -52,6 +56,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     private UUID targetUuid;
     private int life;
     private float strength = 1.0F;
+    private ShadowHandMode mode = ShadowHandMode.CRUSH;
 
     private int ownerId = -1;
     private int targetId = -1;
@@ -70,7 +75,13 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     }
 
     @Nullable
-    public static HandGrabEntity spawn(ServerLevel level, LivingEntity owner, LivingEntity target, float strength, int duration) {
+    public static HandGrabEntity spawn(ServerLevel level, LivingEntity owner, LivingEntity target,
+                                       float strength, int duration) {
+        return spawn(level, owner, target, strength, duration, ShadowHandMode.CRUSH);
+    }
+
+    public static HandGrabEntity spawn(ServerLevel level, LivingEntity owner, LivingEntity target,
+                                       float strength, int duration, ShadowHandMode mode) {
         HandGrabEntity entity = VfxEntities.HAND_GRAB.get().create(level);
         if (entity == null) {
             return null;
@@ -80,6 +91,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         entity.setTarget(target);
         entity.setStrength(strength);
         entity.setLifetime(duration);
+        entity.setMode(mode);
 
         AABB boundingBox = target.getBoundingBox();
         Vec3 center = new Vec3(
@@ -99,6 +111,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         this.entityData.define(LIFE_TICKS, 0);
         this.entityData.define(OWNER_ID, -1);
         this.entityData.define(TARGET_ID, -1);
+        this.entityData.define(MODE, ShadowHandMode.CRUSH.getId());
     }
 
     @Override
@@ -114,6 +127,8 @@ public class HandGrabEntity extends Entity implements GeoEntity {
             this.ownerId = this.entityData.get(OWNER_ID);
         } else if (key.equals(TARGET_ID)) {
             this.targetId = this.entityData.get(TARGET_ID);
+        } else if (key.equals(MODE)) {
+            this.mode = ShadowHandMode.byId(this.entityData.get(MODE));
         }
     }
 
@@ -134,6 +149,9 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         this.entityData.set(TARGET_ID, -1);
         this.ownerId = -1;
         this.targetId = -1;
+        if (tag.contains(TAG_MODE)) {
+            setMode(ShadowHandMode.byId(tag.getInt(TAG_MODE)));
+        }
     }
 
     @Override
@@ -146,6 +164,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         }
         tag.putInt(TAG_LIFE, this.life);
         tag.putFloat(TAG_STRENGTH, this.strength);
+        tag.putInt(TAG_MODE, getMode().getId());
     }
 
     @Override
@@ -165,15 +184,22 @@ public class HandGrabEntity extends Entity implements GeoEntity {
 
         if (!level().isClientSide) {
             if (this.life <= 0) {
+                if (getMode() == ShadowHandMode.THROW) {
+                    throwTarget(target);
+                }
                 discard();
                 return;
             }
             this.life--;
             this.entityData.set(LIFE_TICKS, Math.max(this.life, 0));
 
-            target.setDeltaMovement(target.getDeltaMovement().scale(0.2D));
-            if (tickCount % 10 == 0) {
-                target.hurt(createDamageSource(), 1.0F * this.strength);
+            if (getMode() == ShadowHandMode.THROW) {
+                holdTarget(target, center);
+            } else {
+                target.setDeltaMovement(target.getDeltaMovement().scale(0.2D));
+                if (tickCount % 10 == 0) {
+                    target.hurt(createDamageSource(), 1.0F * this.strength);
+                }
             }
         } else {
             this.life = this.entityData.get(LIFE_TICKS);
@@ -277,6 +303,49 @@ public class HandGrabEntity extends Entity implements GeoEntity {
 
     private void setStrength(float strength) {
         this.strength = Mth.clamp(strength, 0.0F, Float.MAX_VALUE);
+    }
+
+    private void setMode(ShadowHandMode mode) {
+        this.mode = mode;
+        this.entityData.set(MODE, mode.getId());
+    }
+
+    private ShadowHandMode getMode() {
+        if (level().isClientSide) {
+            this.mode = ShadowHandMode.byId(this.entityData.get(MODE));
+        }
+        return this.mode;
+    }
+
+    private void holdTarget(LivingEntity target, Vec3 center) {
+        target.teleportTo(center.x, center.y, center.z);
+        target.setDeltaMovement(Vec3.ZERO);
+        target.hasImpulse = true;
+        target.hurtMarked = true;
+        target.fallDistance = 0.0F;
+    }
+
+    private void throwTarget(LivingEntity target) {
+        Vec3 direction = getThrowDirection();
+        double horizontalScale = 1.6D;
+        Vec3 velocity = new Vec3(direction.x * horizontalScale,
+                Math.max(direction.y + 0.6D, 0.7D),
+                direction.z * horizontalScale);
+        target.setDeltaMovement(velocity);
+        target.hasImpulse = true;
+        target.hurtMarked = true;
+        target.fallDistance = 0.0F;
+    }
+
+    private Vec3 getThrowDirection() {
+        Entity owner = getOwnerEntity();
+        if (owner instanceof LivingEntity livingEntity) {
+            Vec3 lookAngle = livingEntity.getLookAngle();
+            if (lookAngle.lengthSqr() > 1.0E-4D) {
+                return lookAngle.normalize();
+            }
+        }
+        return new Vec3(0.0D, 1.0D, 0.0D);
     }
 
     public int getLifeTicks() {

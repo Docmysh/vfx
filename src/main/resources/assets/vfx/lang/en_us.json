@@ -5,6 +5,7 @@
   "item.vfx.shadow_hand_relic": "Relic of the Grasping Abyss",
   "tooltip.vfx.umbral_lens": "Grants monochrome sight and banishes creeping dark.",
   "tooltip.vfx.shadow_hand_relic": "Summon a crushing hand of midnight to obliterate a foe.",
+  "tooltip.vfx.shadow_hand_relic.mode": "Current Mode: %s",
   "tooltip.vfx.shadow_collector.count": "Stored Shadows: %s",
   "message.vfx.shadow_collector.empty": "The reliquary holds no shadows.",
   "message.vfx.shadow_collector.captured": "Captured the shadow of %s.",
@@ -24,5 +25,8 @@
   "entity.vfx.shadow": "Shadow %s",
   "behavior.vfx.shadow.passive": "Passive",
   "behavior.vfx.shadow.neutral": "Neutral",
-  "behavior.vfx.shadow.hostile": "Hostile"
+  "behavior.vfx.shadow.hostile": "Hostile",
+  "mode.vfx.shadow_hand_relic.crush": "Crushing Grip",
+  "mode.vfx.shadow_hand_relic.throw": "Hurling Grasp",
+  "message.vfx.shadow_hand_relic.mode": "Grasping hand mode set to %s."
 }
