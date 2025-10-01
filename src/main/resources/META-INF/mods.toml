@@ -41,8 +41,9 @@ authors = "${mod_authors}" #optional
 # The description text for the mod (multi line!) (#mandatory)
 description = '''${mod_description}'''
 
-[[mixins]]
-config = "vfx.mixins.json"
+# This project does not currently define any mixins. Pointing Forge to a
+# non-existent mixin config causes the client to crash during start-up, so the
+# mixin section is intentionally omitted.
 # A dependency - use the . to indicate dependency for a specific modid. Dependencies are optional.
 [[dependencies."${mod_id}"]] #optional
 # the modid of the dependency
