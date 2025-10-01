@@ -81,6 +81,7 @@ public class ShadowDomainParticle extends TextureSheetParticle {
         double maxZ = Math.max(start.z, end.z);
         double padding = this.radius * 2.0F;
         this.renderBoundingBox = new AABB(minX, minY, minZ, maxX, maxY, maxZ).inflate(padding);
+        this.setBoundingBox(this.renderBoundingBox);
     }
 
     @Override
@@ -133,12 +134,10 @@ public class ShadowDomainParticle extends TextureSheetParticle {
         return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;
     }
 
-    @Override
     public AABB getRenderBoundingBox() {
         return this.renderBoundingBox;
     }
 
-    @Override
     public boolean shouldCull() {
         return false;
     }
