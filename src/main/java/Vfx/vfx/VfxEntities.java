@@ -1,5 +1,6 @@
 package Vfx.vfx;
 
+import Vfx.vfx.entity.GravityWellFieldEntity;
 import Vfx.vfx.entity.HandGrabEntity;
 import Vfx.vfx.entity.ShadowBallEntity;
 import Vfx.vfx.entity.SingularityCoreEntity;
@@ -52,6 +53,15 @@ public final class VfxEntities {
                     .clientTrackingRange(32)
                     .updateInterval(1)
                     .build("singularity_core")
+    );
+
+    public static final RegistryObject<EntityType<GravityWellFieldEntity>> GRAVITY_WELL = ENTITY_TYPES.register(
+            "gravity_well",
+            () -> EntityType.Builder.<GravityWellFieldEntity>of(GravityWellFieldEntity::new, MobCategory.MISC)
+                    .sized(0.5F, 0.5F)
+                    .clientTrackingRange(32)
+                    .updateInterval(1)
+                    .build("gravity_well")
     );
 
     public static void register(IEventBus eventBus) {
