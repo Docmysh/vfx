@@ -89,7 +89,12 @@ public class ShadowDomainParticle extends TextureSheetParticle {
         }
 
         Vec3 cameraPos = camera.getPosition();
-        Vec3 start = this.getPosition(partialTicks).subtract(cameraPos);
+        Vec3 interpolatedPos = new Vec3(
+                Mth.lerp(partialTicks, this.xo, this.x),
+                Mth.lerp(partialTicks, this.yo, this.y),
+                Mth.lerp(partialTicks, this.zo, this.z)
+        );
+        Vec3 start = interpolatedPos.subtract(cameraPos);
         Vec3 end = start.add(this.direction.scale(this.length));
         int light = this.getLightColor(partialTicks);
         float baseRadius = getCurrentRadius(partialTicks);
