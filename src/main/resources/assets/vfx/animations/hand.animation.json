@@ -1,56 +1,36 @@
 {
   "format_version": "1.8.0",
   "animations": {
-    "appear": {
-      "animation_length": 0.6,
+    "Grasp": {
+      "animation_length": 3,
       "bones": {
-        "root": {
-          "scale": [
-            {
-              "time": 0,
-              "value": [0.15, 0.15, 0.15]
-            },
-            {
-              "time": 0.6,
-              "value": [1.0, 1.0, 1.0]
-            }
-          ]
-        }
-      }
-    },
-    "squeeze": {
-      "loop": true,
-      "animation_length": 1.2,
-      "bones": {
-        "fingers": {
-          "rotation": [
-            {
-              "time": 0,
-              "value": [0.0, 0.0, 0.0]
-            },
-            {
-              "time": 0.6,
-              "value": [7.5, 0.0, 0.0]
-            },
-            {
-              "time": 1.2,
-              "value": [0.0, 0.0, 0.0]
-            }
-          ],
-          "scale": [
-            {
-              "time": 0.0,
-              "value": [1.0, 1.0, 1.0]
-            },
-            {
-              "time": 0.6,
-              "value": [0.92, 0.95, 0.92]
-            },
-            {
-              "time": 1.2,
-              "value": [1.0, 1.0, 1.0]
-            }
-          ]
+        "group": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "3.0": [-37.5, 0, 0]
+          },
+          "position": [0, 0, 0],
+          "scale": 1
+        },
+        "group3": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "3.0": [-147.5, 0, 0]
+          },
+          "position": [0, 0, 0],
+          "scale": 1
+        },
+        "group2": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "3.0": [-52.5, 0, 50]
+          }
+        },
+        "bone2": {
+          "rotation": {
+            "0.0": [0, 0, 0],
+            "3.0": [-15, 0, 0]
+          }
         }
       }
     }
