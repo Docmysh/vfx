@@ -12,14 +12,12 @@ import net.minecraft.network.FriendlyByteBuf;
 
 import java.util.Locale;
 
-public record ShadowDomainParticleOptions(float radius, float length, float directionX, float directionY, float directionZ, int lifetime) implements ParticleOptions {
+public record ShadowDomainParticleOptions(float initialRadius, float targetRadius, float height, int lifetime) implements ParticleOptions {
     public static final Codec<ShadowDomainParticleOptions> CODEC = RecordCodecBuilder.create(instance ->
             instance.group(
-                    Codec.FLOAT.fieldOf("radius").forGetter(ShadowDomainParticleOptions::radius),
-                    Codec.FLOAT.fieldOf("length").forGetter(ShadowDomainParticleOptions::length),
-                    Codec.FLOAT.fieldOf("directionX").forGetter(ShadowDomainParticleOptions::directionX),
-                    Codec.FLOAT.fieldOf("directionY").forGetter(ShadowDomainParticleOptions::directionY),
-                    Codec.FLOAT.fieldOf("directionZ").forGetter(ShadowDomainParticleOptions::directionZ),
+                    Codec.FLOAT.fieldOf("initialRadius").forGetter(ShadowDomainParticleOptions::initialRadius),
+                    Codec.FLOAT.fieldOf("targetRadius").forGetter(ShadowDomainParticleOptions::targetRadius),
+                    Codec.FLOAT.fieldOf("height").forGetter(ShadowDomainParticleOptions::height),
                     Codec.INT.fieldOf("lifetime").forGetter(ShadowDomainParticleOptions::lifetime)
             ).apply(instance, ShadowDomainParticleOptions::new)
     );
@@ -28,29 +26,23 @@ public record ShadowDomainParticleOptions(float radius, float length, float dire
         @Override
         public ShadowDomainParticleOptions fromCommand(ParticleType<ShadowDomainParticleOptions> type, StringReader reader) throws CommandSyntaxException {
             reader.expect(' ');
-            float radius = reader.readFloat();
+            float initialRadius = reader.readFloat();
             reader.expect(' ');
-            float length = reader.readFloat();
+            float targetRadius = reader.readFloat();
             reader.expect(' ');
-            float directionX = reader.readFloat();
-            reader.expect(' ');
-            float directionY = reader.readFloat();
-            reader.expect(' ');
-            float directionZ = reader.readFloat();
+            float height = reader.readFloat();
             reader.expect(' ');
             int lifetime = reader.readInt();
-            return new ShadowDomainParticleOptions(radius, length, directionX, directionY, directionZ, lifetime);
+            return new ShadowDomainParticleOptions(initialRadius, targetRadius, height, lifetime);
         }
 
         @Override
         public ShadowDomainParticleOptions fromNetwork(ParticleType<ShadowDomainParticleOptions> type, FriendlyByteBuf buffer) {
-            float radius = buffer.readFloat();
-            float length = buffer.readFloat();
-            float directionX = buffer.readFloat();
-            float directionY = buffer.readFloat();
-            float directionZ = buffer.readFloat();
+            float initialRadius = buffer.readFloat();
+            float targetRadius = buffer.readFloat();
+            float height = buffer.readFloat();
             int lifetime = buffer.readVarInt();
-            return new ShadowDomainParticleOptions(radius, length, directionX, directionY, directionZ, lifetime);
+            return new ShadowDomainParticleOptions(initialRadius, targetRadius, height, lifetime);
         }
     };
 
@@ -61,23 +53,19 @@ public record ShadowDomainParticleOptions(float radius, float length, float dire
 
     @Override
     public void writeToNetwork(FriendlyByteBuf buffer) {
-        buffer.writeFloat(radius);
-        buffer.writeFloat(length);
-        buffer.writeFloat(directionX);
-        buffer.writeFloat(directionY);
-        buffer.writeFloat(directionZ);
+        buffer.writeFloat(initialRadius);
+        buffer.writeFloat(targetRadius);
+        buffer.writeFloat(height);
         buffer.writeVarInt(lifetime);
     }
 
     @Override
     public String writeToString() {
-        return String.format(Locale.ROOT, "%s %.2f %.2f %.2f %.2f %.2f %d",
+        return String.format(Locale.ROOT, "%s %.2f %.2f %.2f %d",
                 BuiltInRegistries.PARTICLE_TYPE.getKey(getType()),
-                radius,
-                length,
-                directionX,
-                directionY,
-                directionZ,
+                initialRadius,
+                targetRadius,
+                height,
                 lifetime);
     }
 }

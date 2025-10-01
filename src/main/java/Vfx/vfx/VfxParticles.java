@@ -3,7 +3,6 @@ package Vfx.vfx;
 import Vfx.vfx.particle.ShadowDomainParticleOptions;
 import Vfx.vfx.particle.ShadowDomainParticleType;
 import net.minecraft.core.particles.ParticleType;
-import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
@@ -23,20 +22,11 @@ public final class VfxParticles {
         PARTICLES.register(modEventBus);
     }
 
-    public static ShadowDomainParticleOptions domainOptions(float radius, float length, Vec3 direction, int lifetime) {
-        Vec3 normalized = direction;
-        if (normalized.lengthSqr() < 1.0E-4D) {
-            normalized = new Vec3(0.0D, 0.0D, 1.0D);
-        } else {
-            normalized = normalized.normalize();
-        }
-        return new ShadowDomainParticleOptions(
-                radius,
-                length,
-                (float) normalized.x,
-                (float) normalized.y,
-                (float) normalized.z,
-                lifetime
-        );
+    public static ShadowDomainParticleOptions domainOptions(float currentRadius, float projectedRadius, float height, int lifetime) {
+        float safeCurrent = Math.max(currentRadius, 0.1F);
+        float safeProjected = Math.max(projectedRadius, safeCurrent);
+        float safeHeight = Math.max(height, 0.1F);
+        int safeLifetime = Math.max(lifetime, 1);
+        return new ShadowDomainParticleOptions(safeCurrent, safeProjected, safeHeight, safeLifetime);
     }
 }

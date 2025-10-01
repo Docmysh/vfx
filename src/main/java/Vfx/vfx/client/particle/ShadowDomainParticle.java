@@ -6,92 +6,51 @@ import net.minecraft.client.Camera;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.particle.Particle;
 import net.minecraft.client.particle.ParticleProvider;
+import net.minecraft.client.particle.ParticleRenderType;
 import net.minecraft.client.particle.SpriteSet;
 import net.minecraft.client.particle.TextureSheetParticle;
-import net.minecraft.client.particle.ParticleRenderType;
 import net.minecraft.util.Mth;
 import net.minecraft.world.phys.AABB;
-import net.minecraft.world.phys.Vec3;
 
 public class ShadowDomainParticle extends TextureSheetParticle {
-    private static final float MIN_RADIUS = 0.5F;
-    private static final float MIN_LENGTH = 1.0F;
-    private static final float INNER_SCALE = 0.55F;
-    private static final float DIAGONAL_SCALE = 0.75F;
-    private static final float PULSE_SPEED = 0.12F;
-    private static final float MIN_ALPHA = 0.25F;
+    private static final float MIN_ALPHA = 0.3F;
+    private static final float BASE_RADIUS = 0.5F;
+    private static final int SEGMENTS = 24;
+    private static final float INNER_SHADE = 0.15F;
 
     private final SpriteSet sprites;
-
-    private final float radius;
-    private final float length;
-    private final Vec3 direction;
-    private final Vec3 right;
-    private final Vec3 up;
-    private final Vec3[] beamAxes;
-    private final AABB renderBoundingBox;
+    private final float initialRadius;
+    private final float targetRadius;
+    private final float maxRadius;
 
     private ShadowDomainParticle(ClientLevel level, double x, double y, double z,
                                  ShadowDomainParticleOptions options, SpriteSet sprites) {
         super(level, x, y, z, 0.0D, 0.0D, 0.0D);
         this.sprites = sprites;
-        this.radius = Math.max(options.radius(), MIN_RADIUS);
-        this.length = Math.max(options.length(), MIN_LENGTH);
-        Vec3 normalizedDirection = new Vec3(options.directionX(), options.directionY(), options.directionZ());
-        if (normalizedDirection.lengthSqr() < 1.0E-4D) {
-            normalizedDirection = new Vec3(0.0D, 0.0D, 1.0D);
-        } else {
-            normalizedDirection = normalizedDirection.normalize();
-        }
-        this.direction = normalizedDirection;
-        Vec3 reference = Math.abs(this.direction.y) < 0.99D ? new Vec3(0.0D, 1.0D, 0.0D) : new Vec3(1.0D, 0.0D, 0.0D);
-        Vec3 computedRight = this.direction.cross(reference);
-        if (computedRight.lengthSqr() < 1.0E-4D) {
-            reference = new Vec3(0.0D, 0.0D, 1.0D);
-            computedRight = this.direction.cross(reference);
-        }
-        this.right = computedRight.normalize();
-        Vec3 computedUp = this.right.cross(this.direction);
-        if (computedUp.lengthSqr() < 1.0E-4D) {
-            computedUp = new Vec3(0.0D, 1.0D, 0.0D);
-        } else {
-            computedUp = computedUp.normalize();
-        }
-        this.up = computedUp;
-        this.beamAxes = new Vec3[] {
-                this.right,
-                this.up,
-                this.right.add(this.up).normalize(),
-                this.right.subtract(this.up).normalize()
-        };
+        this.initialRadius = Math.max(options.initialRadius(), BASE_RADIUS);
+        this.targetRadius = Math.max(options.targetRadius(), this.initialRadius);
+        this.maxRadius = Math.max(this.initialRadius, this.targetRadius);
+        this.lifetime = Math.max(options.lifetime(), 1);
         this.gravity = 0.0F;
         this.hasPhysics = false;
-        this.lifetime = Math.max(options.lifetime(), 1);
-        this.setSpriteFromAge(this.sprites);
-        this.setColor(0.05F, 0.0F, 0.08F);
-        this.setAlpha(0.9F);
+        this.setSpriteFromAge(sprites);
+        this.setColor(0.02F, 0.02F, 0.02F);
+        this.setAlpha(0.85F);
 
-        Vec3 start = new Vec3(x, y, z);
-        Vec3 end = start.add(this.direction.scale(this.length));
-        double minX = Math.min(start.x, end.x);
-        double minY = Math.min(start.y, end.y);
-        double minZ = Math.min(start.z, end.z);
-        double maxX = Math.max(start.x, end.x);
-        double maxY = Math.max(start.y, end.y);
-        double maxZ = Math.max(start.z, end.z);
-        double padding = this.radius * 2.0F;
-        this.renderBoundingBox = new AABB(minX, minY, minZ, maxX, maxY, maxZ).inflate(padding);
-        this.setBoundingBox(this.renderBoundingBox);
+        double minX = x - this.maxRadius;
+        double minZ = z - this.maxRadius;
+        double maxX = x + this.maxRadius;
+        double maxZ = z + this.maxRadius;
+        double maxY = y + options.height();
+        this.setBoundingBox(new AABB(minX, y, minZ, maxX, maxY, maxZ));
     }
 
     @Override
     public void tick() {
         super.tick();
         if (!this.removed && this.lifetime > 0) {
-            float progress = (float) this.age / (float) this.lifetime;
-            float fade = 1.0F - progress;
-            float pulse = 0.85F + 0.15F * Mth.sin((this.age + 0.5F) * PULSE_SPEED * Mth.TWO_PI);
-            this.setAlpha(Mth.clamp(fade * pulse, MIN_ALPHA, 1.0F));
+            float fade = 1.0F - ((float) this.age / (float) this.lifetime);
+            this.setAlpha(Mth.clamp(0.25F + fade * 0.75F, MIN_ALPHA, 1.0F));
             this.setSpriteFromAge(this.sprites);
         }
     }
@@ -102,31 +61,16 @@ public class ShadowDomainParticle extends TextureSheetParticle {
             return;
         }
 
-        Vec3 cameraPos = camera.getPosition();
-        Vec3 interpolatedPos = new Vec3(
-                Mth.lerp(partialTicks, this.xo, this.x),
-                Mth.lerp(partialTicks, this.yo, this.y),
-                Mth.lerp(partialTicks, this.zo, this.z)
-        );
-        Vec3 start = interpolatedPos.subtract(cameraPos);
-        Vec3 end = start.add(this.direction.scale(this.length));
-        int light = this.getLightColor(partialTicks);
-        float baseRadius = getCurrentRadius(partialTicks);
-        float innerRadius = baseRadius * INNER_SCALE;
-        float diagonalRadius = baseRadius * DIAGONAL_SCALE;
-        float u0 = this.getU0();
-        float u1 = this.getU1();
-        float v0 = this.getV0();
-        float v1 = this.getV1();
+        double camX = camera.getPosition().x;
+        double camY = camera.getPosition().y;
+        double camZ = camera.getPosition().z;
 
-        for (Vec3 axis : this.beamAxes) {
-            float radiusScale = axis == this.right || axis == this.up ? baseRadius : diagonalRadius;
-            renderStrip(buffer, start, end, axis.scale(radiusScale), u0, u1, v0, v1, light);
-        }
+        double x = Mth.lerp(partialTicks, this.xo, this.x) - camX;
+        double y = Mth.lerp(partialTicks, this.yo, this.y) - camY + 0.01D;
+        double z = Mth.lerp(partialTicks, this.zo, this.z) - camZ;
 
-        for (Vec3 axis : this.beamAxes) {
-            renderStrip(buffer, start, end, axis.scale(innerRadius), u0, u1, v0, v1, light);
-        }
+        float radius = getCurrentRadius(partialTicks);
+        renderDisc(buffer, x, y, z, radius, partialTicks);
     }
 
     @Override
@@ -134,10 +78,7 @@ public class ShadowDomainParticle extends TextureSheetParticle {
         return ParticleRenderType.PARTICLE_SHEET_TRANSLUCENT;
     }
 
-    public AABB getRenderBoundingBox() {
-        return this.renderBoundingBox;
-    }
-
+    @Override
     public boolean shouldCull() {
         return false;
     }
@@ -145,47 +86,66 @@ public class ShadowDomainParticle extends TextureSheetParticle {
     private float getCurrentRadius(float partialTicks) {
         float progress = ((float) this.age + partialTicks) / (float) this.lifetime;
         progress = Mth.clamp(progress, 0.0F, 1.0F);
-        float pulse = 0.9F + 0.1F * Mth.sin((this.age + partialTicks) * PULSE_SPEED * Mth.TWO_PI);
-        return this.radius * (0.85F + (1.0F - progress) * 0.15F) * pulse;
+        return Mth.lerp(progress, this.initialRadius, this.targetRadius);
     }
 
-    private void renderStrip(VertexConsumer buffer, Vec3 start, Vec3 end, Vec3 offset,
-                              float u0, float u1, float v0, float v1, int light) {
-        if (offset.lengthSqr() < 1.0E-6D) {
-            return;
+    private void renderDisc(VertexConsumer buffer, double centerX, double centerY, double centerZ, float radius, float partialTicks) {
+        int light = this.getLightColor(partialTicks);
+        float u0 = this.getU0();
+        float u1 = this.getU1();
+        float v0 = this.getV0();
+        float v1 = this.getV1();
+        float uCenter = (u0 + u1) * 0.5F;
+        float vCenter = (v0 + v1) * 0.5F;
+        float uScale = (u1 - u0) * 0.5F;
+        float vScale = (v1 - v0) * 0.5F;
+        float innerRadius = radius * INNER_SHADE;
+
+        for (int i = 0; i < SEGMENTS; ++i) {
+            float angle0 = (float) i / (float) SEGMENTS * Mth.TWO_PI;
+            float angle1 = (float) (i + 1) / (float) SEGMENTS * Mth.TWO_PI;
+            double outerX0 = centerX + Mth.cos(angle0) * radius;
+            double outerZ0 = centerZ + Mth.sin(angle0) * radius;
+            double outerX1 = centerX + Mth.cos(angle1) * radius;
+            double outerZ1 = centerZ + Mth.sin(angle1) * radius;
+            double innerX0 = centerX + Mth.cos(angle0) * innerRadius;
+            double innerZ0 = centerZ + Mth.sin(angle0) * innerRadius;
+            double innerX1 = centerX + Mth.cos(angle1) * innerRadius;
+            double innerZ1 = centerZ + Mth.sin(angle1) * innerRadius;
+
+            float uOuter0 = uCenter + Mth.cos(angle0) * uScale;
+            float vOuter0 = vCenter + Mth.sin(angle0) * vScale;
+            float uOuter1 = uCenter + Mth.cos(angle1) * uScale;
+            float vOuter1 = vCenter + Mth.sin(angle1) * vScale;
+            float uInner0 = uCenter + Mth.cos(angle0) * uScale * INNER_SHADE;
+            float vInner0 = vCenter + Mth.sin(angle0) * vScale * INNER_SHADE;
+            float uInner1 = uCenter + Mth.cos(angle1) * uScale * INNER_SHADE;
+            float vInner1 = vCenter + Mth.sin(angle1) * vScale * INNER_SHADE;
+
+            renderQuad(buffer, centerY, innerX0, innerZ0, innerX1, innerZ1, outerX1, outerZ1, outerX0, outerZ0,
+                    uInner0, vInner0, uInner1, vInner1, uOuter1, vOuter1, uOuter0, vOuter0, light);
         }
+    }
 
-        Vec3 offsetScaled = offset;
-        Vec3 startA = start.subtract(offsetScaled);
-        Vec3 startB = start.add(offsetScaled);
-        Vec3 endB = end.add(offsetScaled);
-        Vec3 endA = end.subtract(offsetScaled);
-
+    private void renderQuad(VertexConsumer buffer, double y,
+                             double innerX0, double innerZ0,
+                             double innerX1, double innerZ1,
+                             double outerX1, double outerZ1,
+                             double outerX0, double outerZ0,
+                             float uInner0, float vInner0,
+                             float uInner1, float vInner1,
+                             float uOuter1, float vOuter1,
+                             float uOuter0, float vOuter0,
+                             int light) {
         float r = this.rCol;
         float g = this.gCol;
         float b = this.bCol;
         float a = this.alpha;
 
-        buffer.vertex(startA.x, startA.y, startA.z)
-                .uv(u1, v0)
-                .color(r, g, b, a)
-                .uv2(light)
-                .endVertex();
-        buffer.vertex(startB.x, startB.y, startB.z)
-                .uv(u0, v0)
-                .color(r, g, b, a)
-                .uv2(light)
-                .endVertex();
-        buffer.vertex(endB.x, endB.y, endB.z)
-                .uv(u0, v1)
-                .color(r, g, b, a)
-                .uv2(light)
-                .endVertex();
-        buffer.vertex(endA.x, endA.y, endA.z)
-                .uv(u1, v1)
-                .color(r, g, b, a)
-                .uv2(light)
-                .endVertex();
+        buffer.vertex(innerX0, y, innerZ0).uv(uInner0, vInner0).color(r, g, b, a).uv2(light).endVertex();
+        buffer.vertex(innerX1, y, innerZ1).uv(uInner1, vInner1).color(r, g, b, a).uv2(light).endVertex();
+        buffer.vertex(outerX1, y, outerZ1).uv(uOuter1, vOuter1).color(r, g, b, a).uv2(light).endVertex();
+        buffer.vertex(outerX0, y, outerZ0).uv(uOuter0, vOuter0).color(r, g, b, a).uv2(light).endVertex();
     }
 
     public static class Provider implements ParticleProvider<ShadowDomainParticleOptions> {
