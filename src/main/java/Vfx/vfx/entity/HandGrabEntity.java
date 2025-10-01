@@ -1,6 +1,7 @@
 package Vfx.vfx.entity;
 
 import Vfx.vfx.VfxEntities;
+import Vfx.vfx.entity.shadow.ShadowHandEntity;
 import Vfx.vfx.entity.shadow.ShadowHandMode;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.nbt.CompoundTag;
@@ -39,6 +40,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     private static final String TAG_HOLD_DISTANCE = "HoldDistance";
     private static final String TAG_AWAITING_RELEASE = "AwaitingRelease";
     private static final String TAG_RELEASE_REQUESTED = "ReleaseRequested";
+    private static final String TAG_MANUAL_RELEASE_DELAY = "ManualReleaseDelay";
 
     private static final EntityDataAccessor<Optional<UUID>> OWNER_UUID =
             SynchedEntityData.defineId(HandGrabEntity.class, EntityDataSerializers.OPTIONAL_UUID);
@@ -66,6 +68,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     private boolean hasHoldPosition;
     private boolean awaitingManualRelease;
     private boolean releaseRequested;
+    private int manualReleaseDelay;
 
     private int ownerId = -1;
     private int targetId = -1;
@@ -171,6 +174,11 @@ public class HandGrabEntity extends Entity implements GeoEntity {
             this.awaitingManualRelease = false;
         }
         this.releaseRequested = tag.getBoolean(TAG_RELEASE_REQUESTED);
+        if (tag.contains(TAG_MANUAL_RELEASE_DELAY)) {
+            this.manualReleaseDelay = tag.getInt(TAG_MANUAL_RELEASE_DELAY);
+        } else {
+            this.manualReleaseDelay = 0;
+        }
         this.hasHoldPosition = false;
         this.previousHoldPosition = Vec3.ZERO;
         this.lastHoldPosition = Vec3.ZERO;
@@ -190,6 +198,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         tag.putDouble(TAG_HOLD_DISTANCE, this.holdDistance);
         tag.putBoolean(TAG_AWAITING_RELEASE, this.awaitingManualRelease);
         tag.putBoolean(TAG_RELEASE_REQUESTED, this.releaseRequested);
+        tag.putInt(TAG_MANUAL_RELEASE_DELAY, this.manualReleaseDelay);
     }
 
     @Override
@@ -220,11 +229,23 @@ public class HandGrabEntity extends Entity implements GeoEntity {
             if (throwMode) {
                 holdTarget(target, center);
                 if (!this.awaitingManualRelease) {
-                    if (this.life <= 0) {
+                    if (this.manualReleaseDelay > 0) {
+                        this.manualReleaseDelay--;
+                        if (this.life > 0) {
+                            this.life--;
+                        }
+                        this.entityData.set(LIFE_TICKS, Math.max(this.life, 0));
+                        if (this.manualReleaseDelay <= 0) {
+                            enableManualReleasePhase();
+                        }
+                    } else if (this.life <= 0) {
                         enableManualReleasePhase();
                     } else {
                         this.life--;
                         this.entityData.set(LIFE_TICKS, Math.max(this.life, 0));
+                        if (this.life <= 0) {
+                            enableManualReleasePhase();
+                        }
                     }
                 } else {
                     this.entityData.set(LIFE_TICKS, 1);
@@ -414,6 +435,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
             this.previousHoldPosition = Vec3.ZERO;
             this.lastHoldPosition = Vec3.ZERO;
             this.hasHoldPosition = false;
+            this.manualReleaseDelay = 0;
             return;
         }
         Vec3 eyePosition = owner.getEyePosition();
@@ -422,6 +444,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         this.previousHoldPosition = center;
         this.lastHoldPosition = center;
         this.hasHoldPosition = true;
+        this.manualReleaseDelay = ShadowHandEntity.getAppearTicks();
     }
 
     private void enableManualReleasePhase() {
@@ -430,6 +453,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         }
         this.awaitingManualRelease = true;
         this.releaseRequested = false;
+        this.manualReleaseDelay = 0;
         this.life = Math.max(this.life, 1);
         this.entityData.set(LIFE_TICKS, Math.max(this.life, 1));
     }
