@@ -7,6 +7,7 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -21,6 +22,7 @@ import java.util.List;
 public class GravitationalStepCharmItem extends Item {
     private static final String TAG_ORIENTATION = "GravityOrientation";
     private static final String PLAYER_TAG = "VfxGravityCharmActive";
+    private static final String PLAYER_POSE_TAG = "VfxGravityCharmPose";
     private static final Direction[] CYCLE_ORDER = new Direction[]{
             Direction.DOWN,
             Direction.NORTH,
@@ -127,7 +129,8 @@ public class GravitationalStepCharmItem extends Item {
             delta = delta.add(gravity.scale(-component * 0.2D));
         }
 
-        delta = delta.add(gravity.scale(0.08D));
+        Vec3 surfaceMotion = adjustSurfaceMotion(player, gravity, orientation, delta.subtract(gravity.scale(component)));
+        delta = gravity.scale(component).add(surfaceMotion).add(gravity.scale(0.08D));
         player.setDeltaMovement(delta);
         player.hasImpulse = true;
         player.fallDistance = 0.0F;
@@ -140,6 +143,7 @@ public class GravitationalStepCharmItem extends Item {
         }
 
         player.getPersistentData().putBoolean(PLAYER_TAG, true);
+        updatePlayerPose(player, orientation);
     }
 
     public static void releaseGravity(Player player) {
@@ -150,6 +154,7 @@ public class GravitationalStepCharmItem extends Item {
             }
             player.fallDistance = 0.0F;
         }
+        restorePlayerPose(player);
     }
 
     private static boolean hasSurface(Player player, Direction orientation) {
@@ -168,6 +173,77 @@ public class GravitationalStepCharmItem extends Item {
             }
         }
         return CYCLE_ORDER[0];
+    }
+
+    private static Vec3 adjustSurfaceMotion(Player player, Vec3 gravity, Direction orientation, Vec3 currentSurface) {
+        double forwardInput = player.zza;
+        double strafeInput = player.xxa;
+        if (Math.abs(forwardInput) < 1.0E-3D && Math.abs(strafeInput) < 1.0E-3D) {
+            return currentSurface.scale(0.91D);
+        }
+
+        Vec3 reference = Math.abs(gravity.y) < 0.999D ? Vec3.UP : new Vec3(0.0D, 0.0D, 1.0D);
+        Vec3 right = gravity.cross(reference).normalize();
+        if (right.lengthSqr() < 1.0E-6D) {
+            right = new Vec3(1.0D, 0.0D, 0.0D);
+        }
+        Vec3 forward = right.cross(gravity).normalize();
+
+        Vec3 desired = forward.scale(forwardInput).add(right.scale(strafeInput));
+        if (desired.lengthSqr() < 1.0E-6D) {
+            return currentSurface;
+        }
+
+        double speed = player.getSpeed();
+        if (player.isSprinting()) {
+            speed *= 1.3D;
+        }
+        if (player.isCrouching()) {
+            speed *= 0.3D;
+        }
+
+        desired = desired.normalize().scale(speed);
+        Vec3 blended = currentSurface.scale(0.5D).add(desired.scale(0.5D));
+
+        if (orientation.getAxis().isHorizontal()) {
+            double clamp = Math.max(Math.abs(forwardInput), Math.abs(strafeInput));
+            blended = desired.scale(clamp);
+        }
+
+        return blended;
+    }
+
+    private static void updatePlayerPose(Player player, Direction orientation) {
+        CompoundTag data = player.getPersistentData();
+        if (!data.contains(PLAYER_POSE_TAG)) {
+            data.putString(PLAYER_POSE_TAG, player.getPose().name());
+        }
+
+        Pose targetPose = orientation == Direction.DOWN ? Pose.STANDING : Pose.SWIMMING;
+        if (player.getPose() != targetPose) {
+            player.setPose(targetPose);
+            player.refreshDimensions();
+        }
+    }
+
+    private static void restorePlayerPose(Player player) {
+        CompoundTag data = player.getPersistentData();
+        if (data.contains(PLAYER_POSE_TAG)) {
+            Pose pose;
+            try {
+                pose = Pose.valueOf(data.getString(PLAYER_POSE_TAG));
+            } catch (IllegalArgumentException ignored) {
+                pose = Pose.STANDING;
+            }
+            if (player.getPose() != pose) {
+                player.setPose(pose);
+                player.refreshDimensions();
+            }
+            data.remove(PLAYER_POSE_TAG);
+        } else if (player.getPose() != Pose.STANDING) {
+            player.setPose(Pose.STANDING);
+            player.refreshDimensions();
+        }
     }
 
     private static String describeDirection(Direction direction) {
