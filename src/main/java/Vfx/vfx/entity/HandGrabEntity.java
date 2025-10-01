@@ -36,6 +36,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     private static final String TAG_LIFE = "Life";
     private static final String TAG_STRENGTH = "Strength";
     private static final String TAG_MODE = "Mode";
+    private static final String TAG_HOLD_DISTANCE = "HoldDistance";
 
     private static final EntityDataAccessor<Optional<UUID>> OWNER_UUID =
             SynchedEntityData.defineId(HandGrabEntity.class, EntityDataSerializers.OPTIONAL_UUID);
@@ -57,6 +58,10 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     private int life;
     private float strength = 1.0F;
     private ShadowHandMode mode = ShadowHandMode.CRUSH;
+    private double holdDistance;
+    private Vec3 lastHoldPosition = Vec3.ZERO;
+    private Vec3 previousHoldPosition = Vec3.ZERO;
+    private boolean hasHoldPosition;
 
     private int ownerId = -1;
     private int targetId = -1;
@@ -99,6 +104,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
                 boundingBox.minY + target.getBbHeight() * 0.6D,
                 (boundingBox.minZ + boundingBox.maxZ) / 2.0D
         );
+        entity.initializeHoldParameters(owner, center);
         entity.moveTo(center);
         level.addFreshEntity(entity);
         return entity;
@@ -152,6 +158,12 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         if (tag.contains(TAG_MODE)) {
             setMode(ShadowHandMode.byId(tag.getInt(TAG_MODE)));
         }
+        if (tag.contains(TAG_HOLD_DISTANCE)) {
+            this.holdDistance = tag.getDouble(TAG_HOLD_DISTANCE);
+        }
+        this.hasHoldPosition = false;
+        this.previousHoldPosition = Vec3.ZERO;
+        this.lastHoldPosition = Vec3.ZERO;
     }
 
     @Override
@@ -165,6 +177,7 @@ public class HandGrabEntity extends Entity implements GeoEntity {
         tag.putInt(TAG_LIFE, this.life);
         tag.putFloat(TAG_STRENGTH, this.strength);
         tag.putInt(TAG_MODE, getMode().getId());
+        tag.putDouble(TAG_HOLD_DISTANCE, this.holdDistance);
     }
 
     @Override
@@ -179,7 +192,15 @@ public class HandGrabEntity extends Entity implements GeoEntity {
             return;
         }
 
-        Vec3 center = getAnchorPosition(target);
+        Vec3 center;
+        if (!level().isClientSide && getMode() == ShadowHandMode.THROW) {
+            center = updateHoldPosition(target);
+        } else if (level().isClientSide && getMode() == ShadowHandMode.THROW) {
+            center = calculateDynamicHoldPosition(target, false);
+        } else {
+            center = getAnchorPosition(target);
+            this.hasHoldPosition = false;
+        }
         setPos(center);
 
         if (!level().isClientSide) {
@@ -326,30 +347,97 @@ public class HandGrabEntity extends Entity implements GeoEntity {
     }
 
     private void throwTarget(LivingEntity target) {
-        Vec3 direction = getThrowDirection();
-        double horizontalScale = 1.6D;
-        Vec3 velocity = new Vec3(direction.x * horizontalScale,
-                Math.max(direction.y + 0.6D, 0.7D),
-                direction.z * horizontalScale);
+        Vec3 velocity = getThrowVelocity();
         target.setDeltaMovement(velocity);
         target.hasImpulse = true;
         target.hurtMarked = true;
         target.fallDistance = 0.0F;
     }
 
-    private Vec3 getThrowDirection() {
+    private Vec3 getThrowVelocity() {
+        Vec3 swing = this.lastHoldPosition.subtract(this.previousHoldPosition);
+        double swingLength = swing.length();
+        if (swingLength > 0.05D) {
+            Vec3 direction = swing.normalize();
+            double speed = Mth.clamp(swingLength * 4.0D, 1.2D, 4.5D);
+            double vertical = Math.max(direction.y * speed + 0.4D, 0.3D);
+            return new Vec3(direction.x * speed, vertical, direction.z * speed);
+        }
+
         Entity owner = getOwnerEntity();
         if (owner instanceof LivingEntity livingEntity) {
             Vec3 lookAngle = livingEntity.getLookAngle();
             if (lookAngle.lengthSqr() > 1.0E-4D) {
-                return lookAngle.normalize();
+                Vec3 normalized = lookAngle.normalize();
+                double speed = 1.6D;
+                return new Vec3(normalized.x * speed,
+                        Math.max(normalized.y * speed + 0.6D, 0.7D),
+                        normalized.z * speed);
             }
         }
-        return new Vec3(0.0D, 1.0D, 0.0D);
+        return new Vec3(0.0D, 0.7D, 0.0D);
     }
 
     public int getLifeTicks() {
         return this.entityData.get(LIFE_TICKS);
+    }
+
+    private void initializeHoldParameters(LivingEntity owner, Vec3 center) {
+        if (this.mode != ShadowHandMode.THROW) {
+            this.holdDistance = 0.0D;
+            this.previousHoldPosition = Vec3.ZERO;
+            this.lastHoldPosition = Vec3.ZERO;
+            this.hasHoldPosition = false;
+            return;
+        }
+        Vec3 eyePosition = owner.getEyePosition();
+        double distance = eyePosition.distanceTo(center);
+        this.holdDistance = Mth.clamp(distance, 1.5D, 7.0D);
+        this.previousHoldPosition = center;
+        this.lastHoldPosition = center;
+        this.hasHoldPosition = true;
+    }
+
+    private Vec3 updateHoldPosition(LivingEntity target) {
+        return calculateDynamicHoldPosition(target, true);
+    }
+
+    private Vec3 calculateDynamicHoldPosition(LivingEntity target, boolean updateHistory) {
+        Entity ownerEntity = getOwnerEntity();
+        if (ownerEntity instanceof LivingEntity owner) {
+            Vec3 eyePosition = owner.getEyePosition();
+            Vec3 lookAngle = owner.getLookAngle();
+            if (lookAngle.lengthSqr() < 1.0E-4D) {
+                lookAngle = owner.getForward();
+            }
+            if (lookAngle.lengthSqr() < 1.0E-4D) {
+                lookAngle = new Vec3(0.0D, 0.0D, 1.0D);
+            }
+
+            if (this.holdDistance <= 0.0D) {
+                Vec3 currentCenter = getAnchorPosition(target);
+                this.holdDistance = Mth.clamp(eyePosition.distanceTo(currentCenter), 1.5D, 7.0D);
+            }
+
+            Vec3 normalized = lookAngle.normalize();
+            Vec3 desiredCenter = eyePosition.add(normalized.scale(this.holdDistance));
+
+            if (updateHistory) {
+                if (!this.hasHoldPosition) {
+                    this.previousHoldPosition = desiredCenter;
+                    this.lastHoldPosition = desiredCenter;
+                    this.hasHoldPosition = true;
+                } else {
+                    this.previousHoldPosition = this.lastHoldPosition;
+                    this.lastHoldPosition = desiredCenter;
+                }
+            }
+
+            return desiredCenter;
+        }
+
+        this.hasHoldPosition = false;
+        return getAnchorPosition(target);
     }
 
     @Override

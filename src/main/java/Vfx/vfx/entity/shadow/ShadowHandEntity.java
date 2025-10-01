@@ -128,7 +128,7 @@ public class ShadowHandEntity extends Entity {
 
         if (!this.crushedTarget && this.tickCount >= APPEAR_TICKS + GRASP_TICKS) {
             if (currentMode == ShadowHandMode.THROW) {
-                throwTarget(target);
+                prepareThrowRelease(target);
             } else {
                 crushTarget(target);
             }
@@ -174,27 +174,10 @@ public class ShadowHandEntity extends Entity {
         }
     }
 
-    private void throwTarget(LivingEntity target) {
-        Vec3 direction = getThrowDirection();
-        double horizontalScale = 1.6D;
-        Vec3 velocity = new Vec3(direction.x * horizontalScale,
-                Math.max(direction.y + 0.6D, 0.7D),
-                direction.z * horizontalScale);
-        target.setDeltaMovement(velocity);
+    private void prepareThrowRelease(LivingEntity target) {
         target.hasImpulse = true;
         target.hurtMarked = true;
         target.fallDistance = 0.0F;
-    }
-
-    private Vec3 getThrowDirection() {
-        Entity owner = getOwner();
-        if (owner instanceof LivingEntity livingEntity) {
-            Vec3 lookAngle = livingEntity.getLookAngle();
-            if (lookAngle.lengthSqr() > 1.0E-4D) {
-                return lookAngle.normalize();
-            }
-        }
-        return new Vec3(0.0D, 1.0D, 0.0D);
     }
 
     private DamageSource createDamageSource() {
