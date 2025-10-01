@@ -1,30 +1,41 @@
-// Made with Blockbench 4.12.6
-// Exported for Minecraft version 1.17 or later with Mojang mappings
-// Paste this class into your mod and generate all required imports
+package Vfx.vfx.client.model;
 
+import Vfx.vfx.Vfx;
+import Vfx.vfx.client.animation.ShadowHandAnimations;
+import Vfx.vfx.entity.shadow.ShadowHandEntity;
+import net.minecraft.client.model.HierarchicalModel;
+import net.minecraft.client.model.geom.ModelLayerLocation;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.geom.builders.CubeDeformation;
+import net.minecraft.client.model.geom.builders.CubeListBuilder;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
+import net.minecraft.client.model.geom.builders.MeshDefinition;
+import net.minecraft.client.model.geom.builders.PartDefinition;
+import net.minecraft.resources.ResourceLocation;
 
-public class a<T extends Entity> extends EntityModel<T> {
-	// This layer location should be baked with EntityRendererProvider.Context in the entity renderer and passed into this model's constructor
-	public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(new ResourceLocation("modid", "a"), "main");
-	private final ModelPart group;
-	private final ModelPart group3;
-	private final ModelPart bone2;
-	private final ModelPart group2;
-	private final ModelPart bone;
-	private final ModelPart bb_main;
+public class ShadowHandModel extends HierarchicalModel<ShadowHandEntity> {
+        public static final ModelLayerLocation LAYER_LOCATION = new ModelLayerLocation(new ResourceLocation(Vfx.MODID, "shadow_hand"), "main");
+        private final ModelPart root;
+        private final ModelPart group;
+        private final ModelPart group3;
+        private final ModelPart bone2;
+        private final ModelPart group2;
+        private final ModelPart bone;
+        private final ModelPart bb_main;
 
-	public a(ModelPart root) {
-		this.group = root.getChild("group");
-		this.group3 = root.getChild("group3");
-		this.bone2 = root.getChild("bone2");
-		this.group2 = root.getChild("group2");
-		this.bone = this.group2.getChild("bone");
-		this.bb_main = root.getChild("bb_main");
-	}
+        public ShadowHandModel(ModelPart root) {
+                this.root = root;
+                this.group = root.getChild("group");
+                this.group3 = root.getChild("group3");
+                this.bone2 = root.getChild("bone2");
+                this.group2 = root.getChild("group2");
+                this.bone = this.group2.getChild("bone");
+                this.bb_main = root.getChild("bb_main");
+        }
 
-	public static LayerDefinition createBodyLayer() {
-		MeshDefinition meshdefinition = new MeshDefinition();
-		PartDefinition partdefinition = meshdefinition.getRoot();
+        public static LayerDefinition createBodyLayer() {
+                MeshDefinition meshdefinition = new MeshDefinition();
+                PartDefinition partdefinition = meshdefinition.getRoot();
 
 		PartDefinition group = partdefinition.addOrReplaceChild("group", CubeListBuilder.create().texOffs(0, 0).addBox(-0.1104F, 1.0853F, 0.83F, 0.0F, 0.75F, 0.25F, new CubeDeformation(0.0F))
 		.texOffs(0, 0).addBox(-0.1104F, 1.0853F, 0.83F, 0.5F, 0.0F, 0.25F, new CubeDeformation(0.0F))
@@ -1000,20 +1011,24 @@ public class a<T extends Entity> extends EntityModel<T> {
 		.texOffs(0, 0).addBox(-1.6F, -7.0F, -2.0F, 0.7F, 2.0F, 1.5F, new CubeDeformation(0.0F))
 		.texOffs(0, 0).addBox(-4.1F, -7.0F, -2.0F, 2.6F, 2.0F, 2.0F, new CubeDeformation(0.0F)), PartPose.offset(0.0F, 24.0F, 0.0F));
 
-		return LayerDefinition.create(meshdefinition, 16, 16);
-	}
+                return LayerDefinition.create(meshdefinition, 16, 16);
+        }
 
-	@Override
-	public void setupAnim(Entity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
+        @Override
+        public ModelPart root() {
+                return this.root;
+        }
 
-	}
+        @Override
+        public void setupAnim(ShadowHandEntity entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch) {
+                this.root.getAllParts().forEach(ModelPart::resetPose);
 
-	@Override
-	public void renderToBuffer(PoseStack poseStack, VertexConsumer vertexConsumer, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
-		group.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
-		group3.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
-		bone2.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
-		group2.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
-		bb_main.render(poseStack, vertexConsumer, packedLight, packedOverlay, red, green, blue, alpha);
-	}
+                if (entity.getAppearAnimationState().isStarted()) {
+                        this.animate(entity.getAppearAnimationState(), ShadowHandAnimations.APPEAR, ageInTicks);
+                }
+
+                if (entity.getGraspAnimationState().isStarted()) {
+                        this.animate(entity.getGraspAnimationState(), ShadowHandAnimations.GRASP, ageInTicks);
+                }
+        }
 }

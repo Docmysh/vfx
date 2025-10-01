@@ -1,7 +1,9 @@
 package Vfx.vfx.entity.shadow;
 
+import net.minecraft.client.animation.AnimationState;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -14,10 +16,12 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MovementEmission;
+import net.minecraft.world.entity.Entity.MovementEmission;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.network.NetworkHooks;
+import net.minecraftforge.api.distmarker.Dist;
+import net.minecraftforge.api.distmarker.OnlyIn;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
@@ -40,6 +44,11 @@ public class ShadowHandEntity extends Entity {
     private boolean crushedTarget;
     private LivingEntity cachedTarget;
     private Entity cachedOwner;
+
+    @OnlyIn(Dist.CLIENT)
+    private final AnimationState appearAnimationState = new AnimationState();
+    @OnlyIn(Dist.CLIENT)
+    private final AnimationState graspAnimationState = new AnimationState();
 
     public ShadowHandEntity(EntityType<? extends ShadowHandEntity> type, Level level) {
         super(type, level);
@@ -87,6 +96,7 @@ public class ShadowHandEntity extends Entity {
 
         this.setPos(target.getX(), target.getY(), target.getZ());
         if (level().isClientSide) {
+            updateClientAnimations();
             spawnClientParticles(target);
             return;
         }
@@ -241,8 +251,25 @@ public class ShadowHandEntity extends Entity {
     }
 
     @Override
-    public Packet<?> getAddEntityPacket() {
+    public Packet<ClientGamePacketListener> getAddEntityPacket() {
         return NetworkHooks.getEntitySpawningPacket(this);
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    private void updateClientAnimations() {
+        this.appearAnimationState.animateWhen(this.tickCount < APPEAR_TICKS, this.tickCount);
+        this.graspAnimationState.animateWhen(this.tickCount >= APPEAR_TICKS && this.tickCount < APPEAR_TICKS + GRASP_TICKS,
+                Math.max(0, this.tickCount - APPEAR_TICKS));
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public AnimationState getAppearAnimationState() {
+        return this.appearAnimationState;
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public AnimationState getGraspAnimationState() {
+        return this.graspAnimationState;
     }
 
     public static boolean hasActiveHand(Level level, LivingEntity target) {

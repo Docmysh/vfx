@@ -2,6 +2,7 @@ package Vfx.vfx;
 
 import com.mojang.logging.LogUtils;
 import Vfx.vfx.client.gui.ShadowSelectionScreen;
+import Vfx.vfx.client.model.ShadowHandModel;
 import Vfx.vfx.client.particle.ShadowDomainParticle;
 import Vfx.vfx.client.render.ShadowHandRenderer;
 import Vfx.vfx.item.DarknessRelicItem;
@@ -34,6 +35,7 @@ import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.client.event.EntityRenderersEvent;
 import net.minecraftforge.client.event.RegisterParticleProvidersEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
@@ -161,6 +163,11 @@ public class Vfx {
         @SubscribeEvent
         public static void registerParticleProviders(RegisterParticleProvidersEvent event) {
             event.registerSpriteSet(VfxParticles.SHADOW_DOMAIN.get(), ShadowDomainParticle.Provider::new);
+        }
+
+        @SubscribeEvent
+        public static void registerLayerDefinitions(EntityRenderersEvent.RegisterLayerDefinitions event) {
+            event.registerLayerDefinition(ShadowHandModel.LAYER_LOCATION, ShadowHandModel::createBodyLayer);
         }
     }
 }
