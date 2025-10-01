@@ -2,6 +2,7 @@ package Vfx.vfx;
 
 import Vfx.vfx.entity.HandGrabEntity;
 import Vfx.vfx.entity.ShadowBallEntity;
+import Vfx.vfx.entity.SingularityCoreEntity;
 import Vfx.vfx.entity.shadow.ShadowHandEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -42,6 +43,15 @@ public final class VfxEntities {
                     .clientTrackingRange(32)
                     .updateInterval(1)
                     .build("shadow_ball")
+    );
+
+    public static final RegistryObject<EntityType<SingularityCoreEntity>> SINGULARITY_CORE = ENTITY_TYPES.register(
+            "singularity_core",
+            () -> EntityType.Builder.<SingularityCoreEntity>of(SingularityCoreEntity::new, MobCategory.MISC)
+                    .sized(2.5F, 2.5F)
+                    .clientTrackingRange(32)
+                    .updateInterval(1)
+                    .build("singularity_core")
     );
 
     public static void register(IEventBus eventBus) {
