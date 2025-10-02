@@ -4,6 +4,7 @@ import Vfx.vfx.entity.GravityWellFieldEntity;
 import Vfx.vfx.entity.HandGrabEntity;
 import Vfx.vfx.entity.ShadowBallEntity;
 import Vfx.vfx.entity.SingularityCoreEntity;
+import Vfx.vfx.entity.SphereOfDoomEntity;
 import Vfx.vfx.entity.shadow.ShadowHandEntity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MobCategory;
@@ -53,6 +54,15 @@ public final class VfxEntities {
                     .clientTrackingRange(32)
                     .updateInterval(1)
                     .build("singularity_core")
+    );
+
+    public static final RegistryObject<EntityType<SphereOfDoomEntity>> SPHERE_OF_DOOM = ENTITY_TYPES.register(
+            "sphere_of_doom",
+            () -> EntityType.Builder.<SphereOfDoomEntity>of(SphereOfDoomEntity::new, MobCategory.MISC)
+                    .sized(3.0F, 3.0F)
+                    .clientTrackingRange(32)
+                    .updateInterval(1)
+                    .build("sphere_of_doom")
     );
 
     public static final RegistryObject<EntityType<GravityWellFieldEntity>> GRAVITY_WELL = ENTITY_TYPES.register(

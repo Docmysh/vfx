@@ -6,6 +6,7 @@ import Vfx.vfx.client.model.ShadowHandModel;
 import Vfx.vfx.client.particle.ShadowDomainParticle;
 import Vfx.vfx.client.render.HandGrabRenderer;
 import Vfx.vfx.client.render.ShadowBallRenderer;
+import Vfx.vfx.client.render.SphereOfDoomRenderer;
 import Vfx.vfx.client.render.ShadowHandRenderer;
 import Vfx.vfx.item.DarknessRelicItem;
 import Vfx.vfx.item.DomainOfShadowsRelicItem;
@@ -17,6 +18,7 @@ import Vfx.vfx.item.BallOfShadowItem;
 import Vfx.vfx.item.GravityDomainTalismanItem;
 import Vfx.vfx.item.GravityWellTotemItem;
 import Vfx.vfx.item.SingularityCoreItem;
+import Vfx.vfx.item.SphereOfDoomItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.core.registries.Registries;
@@ -87,6 +89,7 @@ public class Vfx {
     public static final RegistryObject<Item> GRAVITATIONAL_STEP_CHARM = ITEMS.register("gravitational_step_charm", () -> new GravitationalStepCharmItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> SINGULARITY_CORE = ITEMS.register("singularity_core", () -> new SingularityCoreItem(new Item.Properties().stacksTo(1)));
     public static final RegistryObject<Item> GRAVITY_WELL_TOTEM = ITEMS.register("gravity_well_totem", () -> new GravityWellTotemItem(new Item.Properties().stacksTo(1)));
+    public static final RegistryObject<Item> SPHERE_OF_DOOM = ITEMS.register("sphere_of_doom", () -> new SphereOfDoomItem(new Item.Properties().stacksTo(1)));
 
     public static final RegistryObject<MenuType<ShadowSelectionMenu>> SHADOW_SELECTION_MENU = MENUS.register(
             "shadow_selection",
@@ -155,6 +158,7 @@ public class Vfx {
             event.accept(GRAVITATIONAL_STEP_CHARM);
             event.accept(SINGULARITY_CORE);
             event.accept(GRAVITY_WELL_TOTEM);
+            event.accept(SPHERE_OF_DOOM);
         }
     }
 
@@ -193,6 +197,7 @@ public class Vfx {
             event.registerEntityRenderer(VfxEntities.SHADOW_HAND.get(), ShadowHandRenderer::new);
             event.registerEntityRenderer(VfxEntities.HAND_GRAB.get(), HandGrabRenderer::new);
             event.registerEntityRenderer(VfxEntities.SHADOW_BALL.get(), ShadowBallRenderer::new);
+            event.registerEntityRenderer(VfxEntities.SPHERE_OF_DOOM.get(), SphereOfDoomRenderer::new);
         }
     }
 }
