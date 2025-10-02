@@ -4,12 +4,11 @@ import java.util.List;
 
 import javax.annotation.Nullable;
 
-import min01.gravityapi.api.GravityChangerAPI;
-
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.player.Player;
@@ -17,10 +16,13 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.phys.Vec3;
 
 public class GravitationalStepCharmItem extends Item {
     private static final String TAG_ORIENTATION = "GravityOrientation";
     private static final String PLAYER_TAG = "VfxGravityCharmActive";
+    private static final double GRAVITY_ACCELERATION = 0.08D;
+    private static final double TERMINAL_VELOCITY = 3.92D;
     private static final Direction[] CYCLE_ORDER = new Direction[]{
         Direction.DOWN,
         Direction.NORTH,
@@ -115,8 +117,7 @@ public class GravitationalStepCharmItem extends Item {
             || player.isSleeping()
             || player.isPassenger()
             || player.isFallFlying()
-            || player.isCreative() && player.getAbilities().flying
-            || !GravityChangerAPI.canChangeGravity(player)) {
+            || player.isCreative() && player.getAbilities().flying) {
             releaseGravity(player);
             return;
         }
@@ -126,10 +127,8 @@ public class GravitationalStepCharmItem extends Item {
             return;
         }
 
-        if (GravityChangerAPI.getBaseGravityDirection(player) != orientation) {
-            GravityChangerAPI.setBaseGravityDirection(player, orientation);
-        }
-
+        player.setNoGravity(true);
+        applyCustomGravity(player, orientation);
         player.getPersistentData().putBoolean(PLAYER_TAG, true);
     }
 
@@ -141,8 +140,12 @@ public class GravitationalStepCharmItem extends Item {
         CompoundTag data = player.getPersistentData();
         if (data.contains(PLAYER_TAG)) {
             data.remove(PLAYER_TAG);
-            GravityChangerAPI.resetGravity(player);
         }
+
+        if (!player.isSpectator()) {
+            player.setNoGravity(false);
+        }
+        player.fallDistance = 0;
     }
 
     private static Direction cycleOrientation(Direction current) {
@@ -171,5 +174,27 @@ public class GravitationalStepCharmItem extends Item {
             return getOrientation(stack);
         }
         return Direction.DOWN;
+    }
+
+    private static void applyCustomGravity(Player player, Direction orientation) {
+        Vec3 gravityAxis = Vec3.atLowerCornerOf(orientation.getNormal());
+        Vec3 normalisedAxis = gravityAxis.normalize();
+
+        if (normalisedAxis.lengthSqr() == 0) {
+            return;
+        }
+
+        Vec3 velocity = player.getDeltaMovement();
+        Vec3 accelerated = velocity.add(normalisedAxis.scale(GRAVITY_ACCELERATION));
+
+        double axisSpeed = accelerated.dot(normalisedAxis);
+        double clampedSpeed = Mth.clamp(axisSpeed, -TERMINAL_VELOCITY, TERMINAL_VELOCITY);
+
+        Vec3 corrected = accelerated
+            .subtract(normalisedAxis.scale(axisSpeed))
+            .add(normalisedAxis.scale(clampedSpeed));
+
+        player.setDeltaMovement(corrected);
+        player.fallDistance = 0;
     }
 }
