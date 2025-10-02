@@ -22,6 +22,10 @@ public class GravitationalStepCharmEvents {
             return;
         }
 
+        if (player.level().isClientSide()) {
+            return;
+        }
+
         ItemStack charm = GravitationalStepCharmItem.findCharm(player);
         if (charm.isEmpty()) {
             GravitationalStepCharmItem.releaseGravity(player);
