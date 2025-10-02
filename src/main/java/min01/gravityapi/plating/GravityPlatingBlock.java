@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 import org.jetbrains.annotations.Nullable;
 
 import com.google.common.collect.ImmutableMap;
-import com.min01.gravityapi.init.GravityBlocks;
+import min01.gravityapi.init.GravityBlocks;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

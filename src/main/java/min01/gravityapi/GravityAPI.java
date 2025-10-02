@@ -1,12 +1,12 @@
 package min01.gravityapi;
 
-import com.min01.gravityapi.capabilities.GravityCapabilities;
-import com.min01.gravityapi.config.GravityConfig;
-import com.min01.gravityapi.init.GravityBlocks;
-import com.min01.gravityapi.init.GravityCreativeTabs;
-import com.min01.gravityapi.init.GravityItems;
-import com.min01.gravityapi.init.GravityMobEffects;
-import com.min01.gravityapi.network.GravityNetwork;
+import min01.gravityapi.capabilities.GravityCapabilities;
+import min01.gravityapi.config.GravityConfig;
+import min01.gravityapi.init.GravityBlocks;
+import min01.gravityapi.init.GravityCreativeTabs;
+import min01.gravityapi.init.GravityItems;
+import min01.gravityapi.init.GravityMobEffects;
+import min01.gravityapi.network.GravityNetwork;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraftforge.common.MinecraftForge;

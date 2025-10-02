@@ -7,8 +7,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import com.min01.gravityapi.api.GravityChangerAPI;
-import com.min01.gravityapi.util.GCUtil;
+import min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.util.GCUtil;
 
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;

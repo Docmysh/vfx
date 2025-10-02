@@ -2,7 +2,7 @@ package min01.gravityapi.item;
 
 import java.util.List;
 
-import com.min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.api.GravityChangerAPI;
 
 import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;

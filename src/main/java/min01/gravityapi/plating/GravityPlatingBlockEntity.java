@@ -7,12 +7,12 @@ import org.apache.commons.lang3.Validate;
 import org.jetbrains.annotations.Nullable;
 
 import min01.gravityapi.EntityTags;
-import com.min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.api.GravityChangerAPI;
 import min01.gravityapi.capabilities.GravityCapabilityImpl;
-import com.min01.gravityapi.config.GravityConfig;
-import com.min01.gravityapi.init.GravityBlocks;
-import com.min01.gravityapi.util.GCUtil;
-import com.min01.gravityapi.util.RotationUtil;
+import min01.gravityapi.config.GravityConfig;
+import min01.gravityapi.init.GravityBlocks;
+import min01.gravityapi.util.GCUtil;
+import min01.gravityapi.util.RotationUtil;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

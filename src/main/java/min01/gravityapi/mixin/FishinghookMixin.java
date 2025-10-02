@@ -5,7 +5,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 
-import com.min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.api.GravityChangerAPI;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;

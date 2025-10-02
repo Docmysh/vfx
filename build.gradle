@@ -137,6 +137,14 @@ repositories {
             includeGroup 'com.eliotlash.mclib'
         }
     }
+    maven {
+        name = 'LlamaLad7'
+        url = 'https://maven.llamalad7.com/releases'
+    }
+    maven {
+        name = 'Bawnorton'
+        url = 'https://maven.bawnorton.com/releases'
+    }
 }
 
 dependencies {
@@ -164,6 +172,8 @@ dependencies {
 
     implementation fg.deobf("software.bernie.geckolib:geckolib-forge-${minecraft_version}:${geckolib_version}")
     implementation "com.eliotlash.mclib:mclib:20"
+    implementation fg.deobf('com.llamalad7.mixinextras:mixinextras-forge:0.3.2')
+    implementation fg.deobf('com.bawnorton.mixinsquared:mixinsquared-forge:0.1.1')
 
 }
 

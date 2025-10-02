@@ -11,8 +11,8 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.min01.gravityapi.api.GravityChangerAPI;
-import com.min01.gravityapi.util.RotationUtil;
+import min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.util.RotationUtil;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;

@@ -7,8 +7,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
-import com.min01.gravityapi.api.GravityChangerAPI;
-import com.min01.gravityapi.util.RotationUtil;
+import min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.util.RotationUtil;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.ThrowableProjectile;

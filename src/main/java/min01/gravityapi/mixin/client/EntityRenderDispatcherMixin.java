@@ -12,8 +12,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import min01.gravityapi.EntityTags;
 import min01.gravityapi.RotationAnimation;
-import com.min01.gravityapi.api.GravityChangerAPI;
-import com.min01.gravityapi.util.RotationUtil;
+import min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.util.RotationUtil;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 

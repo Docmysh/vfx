@@ -4,7 +4,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
 
-import com.min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.api.GravityChangerAPI;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.LlamaSpit;

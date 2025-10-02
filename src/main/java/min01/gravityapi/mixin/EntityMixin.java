@@ -15,12 +15,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.min01.gravityapi.api.GravityBlockPos;
-import com.min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.api.GravityBlockPos;
+import min01.gravityapi.api.GravityChangerAPI;
 import min01.gravityapi.capabilities.GravityCapabilities;
 import min01.gravityapi.capabilities.IGravityCapability;
 import min01.gravityapi.config.GravityConfig;
-import com.min01.gravityapi.util.RotationUtil;
+import min01.gravityapi.util.RotationUtil;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

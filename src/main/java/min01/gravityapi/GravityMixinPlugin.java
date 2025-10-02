@@ -30,7 +30,7 @@ public class GravityMixinPlugin implements IMixinConfigPlugin
 	@Override
 	public boolean shouldApplyMixin(String targetClassName, String mixinClassName) 
 	{
-		if(mixinClassName.equals("com.min01.gravityapi.mixin.compat.ACEntityMixin") && LoadingModList.get().getModFileById("alexscaves") == null)
+		if(mixinClassName.equals("min01.gravityapi.mixin.compat.ACEntityMixin") && LoadingModList.get().getModFileById("alexscaves") == null)
 		{
 			return false;
 		}

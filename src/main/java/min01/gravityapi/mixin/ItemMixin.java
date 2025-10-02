@@ -5,8 +5,8 @@ import org.spongepowered.asm.mixin.injection.At;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.min01.gravityapi.api.GravityChangerAPI;
-import com.min01.gravityapi.util.RotationUtil;
+import min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.util.RotationUtil;
 
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.player.Player;

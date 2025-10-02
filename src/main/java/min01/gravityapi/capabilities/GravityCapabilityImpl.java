@@ -7,17 +7,17 @@ import org.joml.Vector3f;
 
 import min01.gravityapi.EntityTags;
 import min01.gravityapi.RotationAnimation;
-import com.min01.gravityapi.api.GravityChangerAPI;
-import com.min01.gravityapi.api.RotationParameters;
-import com.min01.gravityapi.config.GravityConfig;
-import com.min01.gravityapi.init.GravityMobEffects;
-import com.min01.gravityapi.item.GravityAnchorItem;
-import com.min01.gravityapi.mixin.EntityAccessor;
-import com.min01.gravityapi.mob_effect.GravityDirectionMobEffect;
-import com.min01.gravityapi.network.GravityNetwork;
-import com.min01.gravityapi.network.UpdateGravityCapabilityPacket;
-import com.min01.gravityapi.util.GCUtil;
-import com.min01.gravityapi.util.RotationUtil;
+import min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.api.RotationParameters;
+import min01.gravityapi.config.GravityConfig;
+import min01.gravityapi.init.GravityMobEffects;
+import min01.gravityapi.item.GravityAnchorItem;
+import min01.gravityapi.mixin.EntityAccessor;
+import min01.gravityapi.mob_effect.GravityDirectionMobEffect;
+import min01.gravityapi.network.GravityNetwork;
+import min01.gravityapi.network.UpdateGravityCapabilityPacket;
+import min01.gravityapi.util.GCUtil;
+import min01.gravityapi.util.RotationUtil;
 
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;

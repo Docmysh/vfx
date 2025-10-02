@@ -7,8 +7,8 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
-import com.min01.gravityapi.api.GravityChangerAPI;
-import com.min01.gravityapi.util.RotationUtil;
+import min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.util.RotationUtil;
 
 import net.minecraft.client.particle.ItemPickupParticle;
 import net.minecraft.core.Direction;

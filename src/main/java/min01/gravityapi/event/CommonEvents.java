@@ -1,9 +1,9 @@
 package min01.gravityapi.event;
 
 import min01.gravityapi.GravityAPI;
-import com.min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.api.GravityChangerAPI;
 import min01.gravityapi.config.GravityConfig;
-import com.min01.gravityapi.util.GCUtil;
+import min01.gravityapi.util.GCUtil;
 
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;

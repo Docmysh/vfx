@@ -1,6 +1,11 @@
 package Vfx.vfx.item;
 
+import java.util.List;
+
+import javax.annotation.Nullable;
+
 import min01.gravityapi.api.GravityChangerAPI;
+
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
@@ -12,20 +17,17 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.Vec3;
-
-import javax.annotation.Nullable;
-import java.util.List;
 
 public class GravitationalStepCharmItem extends Item {
     private static final String TAG_ORIENTATION = "GravityOrientation";
+    private static final String PLAYER_TAG = "VfxGravityCharmActive";
     private static final Direction[] CYCLE_ORDER = new Direction[]{
-            Direction.DOWN,
-            Direction.NORTH,
-            Direction.EAST,
-            Direction.SOUTH,
-            Direction.WEST,
-            Direction.UP
+        Direction.DOWN,
+        Direction.NORTH,
+        Direction.EAST,
+        Direction.SOUTH,
+        Direction.WEST,
+        Direction.UP
     };
 
     public GravitationalStepCharmItem(Properties properties) {
@@ -40,8 +42,7 @@ public class GravitationalStepCharmItem extends Item {
         if (player.isShiftKeyDown()) {
             next = cycleOrientation(previous);
         } else {
-            Vec3 look = player.getLookAngle();
-            next = Direction.getNearest(look.x, look.y, look.z);
+            next = Direction.getNearest(player.getLookAngle().x, player.getLookAngle().y, player.getLookAngle().z);
         }
 
         if (next == null) {
@@ -52,10 +53,9 @@ public class GravitationalStepCharmItem extends Item {
 
         if (!level.isClientSide) {
             player.displayClientMessage(Component.literal("Gravity orientation: " + describeDirection(next)), true);
-        }
-
-        if (next != previous && !level.isClientSide) {
-            player.getCooldowns().addCooldown(this, 10);
+            if (next != previous) {
+                player.getCooldowns().addCooldown(this, 10);
+            }
         }
 
         return InteractionResultHolder.sidedSuccess(stack, level.isClientSide());
@@ -63,10 +63,14 @@ public class GravitationalStepCharmItem extends Item {
 
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
-        tooltip.add(Component.translatable("item.vfx.gravitational_step_charm.description")
-                .withStyle(ChatFormatting.AQUA));
-        tooltip.add(Component.literal("Orientation: " + describeDirection(getOrientation(stack)))
-                .withStyle(ChatFormatting.GRAY));
+        tooltip.add(
+            Component.translatable("item.vfx.gravitational_step_charm.description")
+                .withStyle(ChatFormatting.AQUA)
+        );
+        tooltip.add(
+            Component.literal("Orientation: " + describeDirection(getOrientation(stack)))
+                .withStyle(ChatFormatting.GRAY)
+        );
         tooltip.add(Component.literal("Use: align to gaze").withStyle(ChatFormatting.DARK_GRAY));
         tooltip.add(Component.literal("Sneak + Use: cycle orientations").withStyle(ChatFormatting.DARK_GRAY));
     }
@@ -103,8 +107,16 @@ public class GravitationalStepCharmItem extends Item {
     }
 
     public static void tickCharm(Player player, Direction orientation) {
-        if (player.isSpectator() || player.isSleeping() || player.isPassenger() || player.isFallFlying() ||
-                player.isCreative() && player.getAbilities().flying) {
+        if (player.level().isClientSide()) {
+            return;
+        }
+
+        if (player.isSpectator()
+            || player.isSleeping()
+            || player.isPassenger()
+            || player.isFallFlying()
+            || player.isCreative() && player.getAbilities().flying
+            || !GravityChangerAPI.canChangeGravity(player)) {
             releaseGravity(player);
             return;
         }
@@ -114,19 +126,22 @@ public class GravitationalStepCharmItem extends Item {
             return;
         }
 
-        if (!player.level().isClientSide()) {
-            Direction current = GravityChangerAPI.getBaseGravityDirection(player);
-            if (current != orientation) {
-                GravityChangerAPI.setBaseGravityDirection(player, orientation);
-            }
+        if (GravityChangerAPI.getBaseGravityDirection(player) != orientation) {
+            GravityChangerAPI.setBaseGravityDirection(player, orientation);
         }
+
+        player.getPersistentData().putBoolean(PLAYER_TAG, true);
     }
 
     public static void releaseGravity(Player player) {
-        if (!player.level().isClientSide()) {
-            if (GravityChangerAPI.getBaseGravityDirection(player) != Direction.DOWN) {
-                GravityChangerAPI.resetGravity(player);
-            }
+        if (player.level().isClientSide()) {
+            return;
+        }
+
+        CompoundTag data = player.getPersistentData();
+        if (data.contains(PLAYER_TAG)) {
+            data.remove(PLAYER_TAG);
+            GravityChangerAPI.resetGravity(player);
         }
     }
 

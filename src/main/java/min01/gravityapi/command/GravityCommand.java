@@ -5,10 +5,10 @@ import java.util.List;
 
 import org.apache.commons.lang3.Validate;
 
-import com.min01.gravityapi.api.GravityChangerAPI;
+import min01.gravityapi.api.GravityChangerAPI;
 import min01.gravityapi.capabilities.GravityCapabilityImpl;
-import com.min01.gravityapi.util.GCUtil;
-import com.min01.gravityapi.util.RotationUtil;
+import min01.gravityapi.util.GCUtil;
+import min01.gravityapi.util.RotationUtil;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.arguments.DoubleArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;

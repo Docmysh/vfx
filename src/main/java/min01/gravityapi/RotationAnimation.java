@@ -4,8 +4,8 @@ import org.apache.commons.lang3.Validate;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
 
-import com.min01.gravityapi.util.QuaternionUtil;
-import com.min01.gravityapi.util.RotationUtil;
+import min01.gravityapi.util.QuaternionUtil;
+import min01.gravityapi.util.RotationUtil;
 
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;

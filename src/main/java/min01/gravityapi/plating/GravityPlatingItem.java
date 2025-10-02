@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.jetbrains.annotations.Nullable;
 
-import com.min01.gravityapi.init.GravityItems;
+import min01.gravityapi.init.GravityItems;
 
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;

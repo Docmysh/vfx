@@ -4,7 +4,7 @@ import java.util.UUID;
 import java.util.function.Supplier;
 
 import min01.gravityapi.capabilities.GravityCapabilities;
-import com.min01.gravityapi.util.GCUtil;
+import min01.gravityapi.util.GCUtil;
 
 import net.minecraft.core.Direction;
 import net.minecraft.network.FriendlyByteBuf;
