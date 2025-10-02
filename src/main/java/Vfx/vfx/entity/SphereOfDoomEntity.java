@@ -33,6 +33,13 @@ public class SphereOfDoomEntity extends Entity implements GeoEntity {
     private static final EntityDataAccessor<Integer> LIFE_TICKS =
             SynchedEntityData.defineId(SphereOfDoomEntity.class, EntityDataSerializers.INT);
 
+    private static final EntityDataAccessor<Float> DIRECTION_X =
+            SynchedEntityData.defineId(SphereOfDoomEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DIRECTION_Y =
+            SynchedEntityData.defineId(SphereOfDoomEntity.class, EntityDataSerializers.FLOAT);
+    private static final EntityDataAccessor<Float> DIRECTION_Z =
+            SynchedEntityData.defineId(SphereOfDoomEntity.class, EntityDataSerializers.FLOAT);
+
     private static final int DELAY_TICKS = 200;
     private static final int ACTIVE_TICKS = 120;
     private static final float MOVE_SPEED = 1.2F;
@@ -64,6 +71,9 @@ public class SphereOfDoomEntity extends Entity implements GeoEntity {
     @Override
     protected void defineSynchedData() {
         this.entityData.define(LIFE_TICKS, 0);
+        this.entityData.define(DIRECTION_X, 0.0F);
+        this.entityData.define(DIRECTION_Y, 0.0F);
+        this.entityData.define(DIRECTION_Z, 0.0F);
     }
 
     @Override
@@ -71,6 +81,8 @@ public class SphereOfDoomEntity extends Entity implements GeoEntity {
         super.onSyncedDataUpdated(key);
         if (LIFE_TICKS.equals(key)) {
             this.lifeTicks = this.entityData.get(LIFE_TICKS);
+        } else if (DIRECTION_X.equals(key) || DIRECTION_Y.equals(key) || DIRECTION_Z.equals(key)) {
+            updateTravelDirectionFromSyncedData();
         }
     }
 
@@ -133,9 +145,16 @@ public class SphereOfDoomEntity extends Entity implements GeoEntity {
     private void setTravelDirection(Vec3 direction) {
         Vec3 normalized = direction.normalize();
         if (normalized.lengthSqr() <= 0.0D) {
-            normalized = new Vec3(0.0D, 0.0D, 0.0D);
+            normalized = Vec3.ZERO;
         }
+
         this.travelDirection = normalized;
+
+        if (!level().isClientSide) {
+            this.entityData.set(DIRECTION_X, (float) normalized.x);
+            this.entityData.set(DIRECTION_Y, (float) normalized.y);
+            this.entityData.set(DIRECTION_Z, (float) normalized.z);
+        }
     }
 
     private void destroyBlocksInPath() {
@@ -196,5 +215,15 @@ public class SphereOfDoomEntity extends Entity implements GeoEntity {
     @Override
     public AnimatableInstanceCache getAnimatableInstanceCache() {
         return this.cache;
+    }
+
+    private void updateTravelDirectionFromSyncedData() {
+        Vec3 direction = new Vec3(this.entityData.get(DIRECTION_X), this.entityData.get(DIRECTION_Y),
+                this.entityData.get(DIRECTION_Z));
+        if (direction.lengthSqr() <= 0.0D) {
+            this.travelDirection = Vec3.ZERO;
+        } else {
+            this.travelDirection = direction.normalize();
+        }
     }
 }
